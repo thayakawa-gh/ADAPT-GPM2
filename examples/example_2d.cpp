@@ -41,7 +41,7 @@ int main()
 		e2[i] = std::sqrt(y2[i]);
 	}
 
-	GPMCanvas2D g(""example_2d.png");
+	GPMCanvas2D g("example_2d.png");
 	g.SetTitle("example\\_2d");
 	g.SetXRange(-4.0, 4.0);
 	g.SetXLabel("x");
