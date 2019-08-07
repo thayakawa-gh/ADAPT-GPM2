@@ -57,7 +57,7 @@ int main()
 			}
 		}
 	}
-	GPMCanvasCM g("test_colormap.png");
+	GPMCanvasCM g(""example_colormap.png");
 	g.SetPaletteDefined({ { 0, "cyan" }, { 3.6, "blue" }, { 4., "black" }, { 4.4, "red"}, { 8, "yellow" } });
 	g.SetTitle("example\\_colormap");
 	g.SetSizeRatio(-1);
