@@ -24,17 +24,13 @@ namespace gpm2
 namespace plot
 {
 
-struct GPMGraphParam;
-struct Using;
-enum Style;
-
-//std::vector<double>か、さもなくばファイルのカラム。
 struct ArrayData
 {
 	ArrayData() : mVector(nullptr), mType(-1) {}
 	ArrayData(const std::vector<double>& vector) : mVector(&vector), mType(0) {}
 	ArrayData(const std::string& column) : mColumn(&column), mType(1) {}
 	ArrayData(double value) : mValue(value), mType(2) {}
+	ArrayData(const ArrayData& a) : mVector(a.mVector), mType(a.mType) {}
 
 	bool IsEmpty() const { return (!mVector) && (mType == -1); }
 	int GetType() const { return mType; }
@@ -55,7 +51,6 @@ private:
 	int mType;//0:vector, 1:column, 2:constant value
 };
 
-//MemberInfoかMatrixか、ファイルのカラム2組。
 struct MatrixData
 {
 	MatrixData() : mMatrix(nullptr), mType(-1) {}
@@ -137,7 +132,7 @@ std::string PointPlotCommand(const GraphParam& p)
 	std::string c;
 	if (p.mXErrorbarPoint || p.mYErrorbarPoint)
 	{
-		if (p.mStyle == plot::LINES)
+		if (p.mStyle == Style::LINES)
 		{
 			if (p.mXErrorbarPoint && p.mYErrorbarPoint)
 				c += " xyerrorlines";
@@ -150,7 +145,7 @@ std::string PointPlotCommand(const GraphParam& p)
 			if (!p.mColor.empty()) c += " linecolor '" + p.mColor + "'";
 			else if (p.mVariableColorPoint) c += " linecolor palette";
 		}
-		else if (p.mStyle == plot::BOXES)
+		else if (p.mStyle == Style::BOXES)
 		{
 			//c += " boxes";
 			if (p.mXErrorbarPoint && p.mYErrorbarPoint)
@@ -166,7 +161,7 @@ std::string PointPlotCommand(const GraphParam& p)
 		}
 		else
 		{
-			if (p.mStyle != plot::POINTS)
+			if (p.mStyle != Style::POINTS)
 				std::cerr << "WARNING : Only \"lines\", \"boxes\" or \"points\" styles are allowed with errobars. Style option is to be ignored." << std::endl;
 
 			//c += " points";
@@ -183,29 +178,28 @@ std::string PointPlotCommand(const GraphParam& p)
 		}
 	}
 	//ベクトル、エラーバー指定がない場合。
-	else if (p.mStyle == plot::LINES ||
-			 p.mStyle == plot::INPULSES ||
-			 p.mStyle == plot::STEPS ||
-			 p.mStyle == plot::FSTEPS ||
-			 p.mStyle == plot::HISTEPS ||
-			 p.mStyle == plot::BOXES)
+	else if (p.mStyle == Style::LINES ||
+			 p.mStyle == Style::INPULSES ||
+			 p.mStyle == Style::STEPS ||
+			 p.mStyle == Style::FSTEPS ||
+			 p.mStyle == Style::HISTEPS ||
+			 p.mStyle == Style::BOXES)
 	{
 		switch (p.mStyle)
 		{
-		case plot::LINES: c += " lines"; break;
-		case plot::INPULSES: c += " impulses"; break;
-		case plot::STEPS: c += " steps"; break;
-		case plot::FSTEPS: c += " fsteps"; break;
-		case plot::HISTEPS: c += " histeps"; break;
-		case plot::BOXES: c += " boxes"; break;
+		case Style::LINES: c += " lines"; break;
+		case Style::INPULSES: c += " impulses"; break;
+		case Style::STEPS: c += " steps"; break;
+		case Style::FSTEPS: c += " fsteps"; break;
+		case Style::HISTEPS: c += " histeps"; break;
+		case Style::BOXES: c += " boxes"; break;
 		}
-		c += " " + p.mStyle;
 		if (p.mLineType != -1) c += " linetype " + std::to_string(p.mLineType);
 		if (p.mLineWidth != -1) c += " linewidth " + std::to_string(p.mLineWidth);
 		if (!p.mColor.empty()) c += " linecolor '" + p.mColor + "'";
 		else if (p.mVariableColorPoint) c += " linecolor palette";
 	}
-	else if (p.mStyle == plot::POINTS)
+	else if (p.mStyle == Style::POINTS)
 	{
 		c += " points";
 		if (p.mLineType != -1)
@@ -217,7 +211,7 @@ std::string PointPlotCommand(const GraphParam& p)
 		if (!p.mColor.empty()) c += " linecolor '" + p.mColor + "'";//pointのときも何故かlinecolorらしい。
 		else if (p.mVariableColorPoint) c += " palette";//しかしpalette指定の場合はlinecolorがいらない。謎。
 	}
-	else if (p.mStyle == plot::LINESPOINTS)
+	else if (p.mStyle == Style::LINESPOINTS)
 	{
 		c += " linespoints";
 		if (p.mLineType != -1) c += " linetype " + std::to_string(p.mLineType);
@@ -227,7 +221,7 @@ std::string PointPlotCommand(const GraphParam& p)
 		if (!p.mColor.empty()) c += " linecolor '" + p.mColor + "'";
 		else if (p.mVariableColorPoint) c += " linecolor palette";
 	}
-	else if (p.mStyle == plot::DOTS)
+	else if (p.mStyle == Style::DOTS)
 	{
 		c += " dots";
 		if (p.mLineType != -1)
@@ -250,12 +244,12 @@ std::string VectorPlotCommand(const GraphParam& p)
 	c += " vector ";
 	if (p.mArrowHead != -1)
 	{
-		if (p.mArrowHead & 0b11 == 0) c += " head";
-		else if (p.mArrowHead & 0b11 == 1) c += " heads";
-		else if (p.mArrowHead & 0b11 == 2) c += " noheads";
-		if (p.mArrowHead & 0b1100 == 4) c += " filled";
-		else if (p.mArrowHead & 0b1100 == 5) c += " empty";
-		else if (p.mArrowHead & 0b1100 == 6) c += " nofilled";
+		if ((p.mArrowHead & 0b11) == 0) c += " head";
+		else if ((p.mArrowHead & 0b11) == 1) c += " heads";
+		else if ((p.mArrowHead & 0b11) == 2) c += " noheads";
+		if ((p.mArrowHead & 0b1100) == 4) c += " filled";
+		else if ((p.mArrowHead & 0b1100) == 5) c += " empty";
+		else if ((p.mArrowHead & 0b1100) == 6) c += " nofilled";
 	}
 	if (p.mArrowWidth != -1) c += " linewidth " + std::to_string(p.mArrowWidth);
 	if (!p.mArrowColor.empty()) c += " linecolor '" + p.mArrowColor + "'";
@@ -315,6 +309,7 @@ public:
 
 	void SetOutput(const std::string& output);
 	void Reset();
+	const std::string& GetOutput() const;
 
 	void Command(const std::string& str);
 
@@ -498,6 +493,10 @@ inline void GPMCanvas::Reset()
 {
 	Command("reset");
 }
+inline const std::string& GPMCanvas::GetOutput() const
+{
+	return mOutput;
+}
 
 inline void Command(FILE* pipe, const std::string& str)
 {
@@ -600,13 +599,14 @@ using GPM3DAxis = GPMXAxis<GPMX2Axis<GPMYAxis<GPMY2Axis<GPMZAxis<GPMCBAxis<GPM>>
 
 }
 
+enum class Style { DEFAULT, LINES, POINTS, LINESPOINTS, DOTS, INPULSES, BOXES, STEPS, FSTEPS, HISTEPS, };
+enum class ArrowStyle { HEAD = 0, HEADS = 1, NOHEADS = 2, FILLED = 0 << 2, EMPTY = 1 << 2, NOFILLED = 2 << 2, };
+
 namespace plot
 {
 
 struct BaseOption {};
 struct PointOption : public BaseOption {};
-struct Hist1DOption : public PointOption {};
-struct Hashmap1DOption : public Hist1DOption {};
 struct VectorOption : public BaseOption {};
 struct PointVectorOption : public PointOption, public VectorOption {};
 
@@ -630,27 +630,24 @@ CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(variable_color, ArrayData, PointOption)
 CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(xfrom, ArrayData, VectorOption)
 CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(xlen, ArrayData, VectorOption)
 CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(yfrom, ArrayData, VectorOption)
-CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(ylen, const std::vector<double>&, VectorOption)
+CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(ylen, ArrayData, VectorOption)
 CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(arrowcolor, const std::string&, VectorOption)
 CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(arrowwidth, double, VectorOption)
 CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(variable_arrowcolor, ArrayData, VectorOption)
 CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(arrowhead, int, VectorOption)
 
-enum Style { LINES, POINTS, LINESPOINTS, DOTS, INPULSES, BOXES, STEPS, FSTEPS, HISTEPS, };
-enum ArrowStyle { HEAD = 0, HEADS = 1, NOHEADS = 2, FILLED = 0 << 2, EMPTY = 1 << 2, NOFILLED = 2 << 2, };
-
 }
-
-class GPMCanvas2D;
 
 namespace detail
 {
+
+namespace plot = gpm2::plot;
 
 struct GPMGraphParam2D
 {
 	GPMGraphParam2D()
 		: mType(EQUATION), mAxis(),
-		mStyle(plot::POINTS), mPointType(-1), mPointSize(-1), mLineType(-1), mLineWidth(-1), mColor(),
+		mStyle(Style::DEFAULT), mPointType(-1), mPointSize(-1), mLineType(-1), mLineWidth(-1), mColor(),
 		mArrowWidth(-1), mArrowColor(),
 		mArrowHead(0)
 	{}
@@ -662,6 +659,7 @@ struct GPMGraphParam2D
 			mPointSize != -1 ||
 			mLineType != -1 ||
 			mLineWidth != -1 ||
+			mStyle != Style::DEFAULT ||
 			!mColor.empty() ||
 			!mXPoint.IsEmpty() ||
 			!mYPoint.IsEmpty() ||
@@ -690,7 +688,7 @@ struct GPMGraphParam2D
 	std::string mAxis;
 
 	//PointOption
-	plot::Style mStyle;//デフォルトではPOINTS
+	Style mStyle;//デフォルトではPOINTS
 	int mPointType;//-1ならデフォルト
 	double mPointSize;//-1ならデフォルト、-2ならvariable
 	int mLineType;//-1ならデフォルト
@@ -716,66 +714,66 @@ struct GPMGraphParam2D
 	std::vector<std::string> mColumn;
 };
 
-struct GPMPlotReserver2D
+template <class GraphParam>
+struct GPMPlotBuffer2D
 {
-	GPMPlotReserver2D(GPMCanvas2D* g);
-	GPMPlotReserver2D(const GPMPlotReserver2D&) = delete;
-	GPMPlotReserver2D(GPMPlotReserver2D&& p);
-	virtual ~GPMPlotReserver2D();
-
-	GPMPlotReserver2D Plot(detail::GPMGraphParam2D& i);
-	template <class ...Options, bool B = AreAllKeywords<Options...>::value, std::enable_if_t<B, std::nullptr_t> = nullptr>
-	GPMPlotReserver2D Plot(Options ...ops);
+	GPMPlotBuffer2D(GPMCanvas* g);
+	GPMPlotBuffer2D(const GPMPlotBuffer2D&) = delete;
+	GPMPlotBuffer2D(GPMPlotBuffer2D&& p);
+	virtual ~GPMPlotBuffer2D();
 
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::PointOption)>
-	GPMPlotReserver2D PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options&& ...ops);
-	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::VectorOption)>
-	GPMPlotReserver2D PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
-								  const std::vector<double>& xlen, const std::vector<double>& ylen,
-								  Options&& ...ops);
-private:
+	GPMPlotBuffer2D PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::PointOption)>
+	GPMPlotBuffer2D PlotPoints(const std::string& equation, Options ...ops);
 
-	static std::string PlotCommand(const GPMGraphParam2D& i);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::VectorOption)>
+	GPMPlotBuffer2D PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
+								  const std::vector<double>& xlen, const std::vector<double>& ylen,
+								  Options ...ops);
+protected:
+
+	GPMPlotBuffer2D Plot(GraphParam& i);
+
+	static std::string PlotCommand(const GraphParam& i);
 	static std::string InitCommand();
 
-	std::vector<GPMGraphParam2D> mParam;
-	GPMCanvas2D* mCanvas;
+	std::vector<GraphParam> mParam;
+	GPMCanvas* mCanvas;
 };
 
-}
-
-class GPMCanvas2D : public detail::GPM2DAxis<detail::GPMCanvas>
+template <class GraphParam, template <class> class Buffer>
+class GPMCanvas2D : public GPM2DAxis<detail::GPMCanvas>
 {
 public:
 
+	using _Buffer = Buffer<GraphParam>;
 	using detail::GPM2DAxis<detail::GPMCanvas>::GPM2DAxis;
 
-	friend class detail::GPMPlotReserver2D;
 	friend class GPMMultiPlotter;
 
-	detail::GPMPlotReserver2D Plot(detail::GPMGraphParam2D& i);
-	template <class ...Options, bool B = AreAllKeywords<Options...>::value, std::enable_if_t<B, std::nullptr_t> = nullptr>
-	detail::GPMPlotReserver2D Plot(Options ...ops);
-
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::PointOption)>
-	detail::GPMPlotReserver2D PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops);
+	_Buffer PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::PointOption)>
+	_Buffer PlotPoints(const std::string& equation, Options ...ops);
+
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::VectorOption)>
-	detail::GPMPlotReserver2D PlotVectors(const std::vector<double>& xbegin, const std::vector<double>& ybegin,
-										  const std::vector<double>& xlen, const std::vector<double>& ylen,
-										  Options ...ops);
+	_Buffer PlotVectors(const std::vector<double>& xbegin, const std::vector<double>& ybegin,
+						  const std::vector<double>& xlen, const std::vector<double>& ylen,
+						  Options ...ops);
 };
 
-namespace detail
-{
-
-inline GPMPlotReserver2D::GPMPlotReserver2D(GPMCanvas2D* g)
+template <class GraphParam>
+inline GPMPlotBuffer2D<GraphParam>::GPMPlotBuffer2D(GPMCanvas* g)
 	: mCanvas(g) {}
-inline GPMPlotReserver2D::GPMPlotReserver2D(GPMPlotReserver2D&& p)
+template <class GraphParam>
+inline GPMPlotBuffer2D<GraphParam>::GPMPlotBuffer2D(GPMPlotBuffer2D&& p)
 	: mCanvas(p.mCanvas), mParam(std::move(p.mParam))
 {
 	p.mCanvas = nullptr;
 }
-inline GPMPlotReserver2D::~GPMPlotReserver2D()
+template <class GraphParam>
+inline GPMPlotBuffer2D<GraphParam>::~GPMPlotBuffer2D()
 {
 	//mPipeがnullptrでないときはこのPlotterが最終処理を担当する。
 	if (mCanvas != nullptr)
@@ -790,128 +788,107 @@ inline GPMPlotReserver2D::~GPMPlotReserver2D()
 		mCanvas->Command(InitCommand());
 	}
 }
-inline GPMPlotReserver2D GPMPlotReserver2D::Plot(detail::GPMGraphParam2D& i)
+template <class GraphParam>
+inline GPMPlotBuffer2D<GraphParam> GPMPlotBuffer2D<GraphParam>::Plot(GraphParam& i)
 {
 	const bool ispoint = i.IsPoint();
 	const bool isvector = i.IsVector();
 
 	if ((int)ispoint + (int)isvector != 1) throw InvalidArg("");
 
-	i.mGraph = mCanvas->mOutput + ".tmp" + std::to_string(mParam.size()) + ".txt";
-	auto GET_ARRAY = [](plot::ArrayData& X, const std::string& x,
-						std::vector<std::vector<double>::const_iterator>& it, std::vector<std::string>& column, size_t& size)
+	if (i.mType == GraphParam::DATA)
 	{
-		switch (X.GetType())
+		i.mGraph = mCanvas->GetOutput() + ".tmp" + std::to_string(mParam.size()) + ".txt";
+		auto GET_ARRAY = [](plot::ArrayData& X, const std::string& x,
+							std::vector<std::vector<double>::const_iterator>& it, std::vector<std::string>& column, size_t& size)
 		{
-		case 0:
-			if (size == 0) size = X.GetVector().size();
-			else if (size != X.GetVector().size()) throw InvalidArg("The number of " + x + " does not match with the others.");
-			it.emplace_back(X.GetVector().begin());
-			column.emplace_back(std::to_string(it.size()));
-			break;
-		case 1:
-			column.emplace_back(X.GetColumn());
-			break;
-		case 2:
-			column.emplace_back("($1-$1+" + std::to_string(X.GetValue()) + ")");
-			break;
-		}
-	};
+			switch (X.GetType())
+			{
+			case 0:
+				if (size == 0) size = X.GetVector().size();
+				else if (size != X.GetVector().size()) throw InvalidArg("The number of " + x + " does not match with the others.");
+				it.emplace_back(X.GetVector().begin());
+				column.emplace_back(std::to_string(it.size()));
+				break;
+			case 1:
+				column.emplace_back(X.GetColumn());
+				break;
+			case 2:
+				column.emplace_back("($1-$1+" + std::to_string(X.GetValue()) + ")");
+				break;
+			}
+		};
 
-	std::vector<std::vector<double>::const_iterator> it;
-	std::vector<std::string> column;
-	size_t size = 0;
+		std::vector<std::vector<double>::const_iterator> it;
+		std::vector<std::string> column;
+		size_t size = 0;
 
-	//ファイルを作成する。
-	if (ispoint)
-	{
-		if (!i.mXPoint) throw InvalidArg("x coordinate list is not given.");
-		if (!i.mYPoint) throw InvalidArg("y coordinate list is not given.");
+		//ファイルを作成する。
+		if (ispoint)
+		{
+			if (!i.mXPoint) throw InvalidArg("x coordinate list is not given.");
+			if (!i.mYPoint) throw InvalidArg("y coordinate list is not given.");
 
-		if (i.mXPoint.GetType() == 0)
-		{
+			if (i.mXPoint.GetType() == 0)
+			{
 
-		}
-		GET_ARRAY(i.mXPoint, "x", it, column, size);
-		GET_ARRAY(i.mYPoint, "y", it, column, size);
+			}
+			GET_ARRAY(i.mXPoint, "x", it, column, size);
+			GET_ARRAY(i.mYPoint, "y", it, column, size);
 
-		if (i.mXErrorbarPoint)
-		{
-			GET_ARRAY(i.mXErrorbarPoint, "xerrorbar", it, column, size);
+			if (i.mXErrorbarPoint)
+			{
+				GET_ARRAY(i.mXErrorbarPoint, "xerrorbar", it, column, size);
+			}
+			if (i.mYErrorbarPoint)
+			{
+				GET_ARRAY(i.mYErrorbarPoint, "yerrorbar", it, column, size);
+			}
+			if (i.mVariableColorPoint)
+			{
+				GET_ARRAY(i.mVariableColorPoint, "variable_color", it, column, size);
+			}
+			if (i.mVariableSizePoint)
+			{
+				GET_ARRAY(i.mVariableSizePoint, "variable_size", it, column, size);
+			}
 		}
-		if (i.mYErrorbarPoint)
+		else if (isvector)
 		{
-			GET_ARRAY(i.mYErrorbarPoint, "yerrorbar", it, column, size);
+			if (!i.mXFromVector) throw InvalidArg("xfrom coordinate list is not given.");
+			GET_ARRAY(i.mXFromVector, "xfrom", it, column, size);
+			if (!i.mYFromVector) throw InvalidArg("yfrom coordinate list is not given.");
+			GET_ARRAY(i.mYFromVector, "yfrom", it, column, size);
+			if (!i.mXLenVector) throw InvalidArg("xlen coordinate list is not given.");
+			GET_ARRAY(i.mXLenVector, "xlen", it, column, size);
+			if (!i.mYLenVector) throw InvalidArg("ylen coordinate list is not given.");
+			GET_ARRAY(i.mYLenVector, "ylen", it, column, size);
+
+			if (i.mVariableColorVector)
+			{
+				GET_ARRAY(i.mVariableColorVector, "variable_color", it, column, size);
+			}
 		}
-		if (i.mVariableColorPoint)
-		{
-			GET_ARRAY(i.mVariableColorPoint, "variable_color", it, column, size);
-		}
-		if (i.mVariableSizePoint)
-		{
-			GET_ARRAY(i.mVariableSizePoint, "variable_size", it, column, size);
-		}
+		MakeFile(it, size, i.mGraph);
+		i.mColumn = std::move(column);
 	}
-	else if (isvector)
-	{
-		if (!i.mXFromVector) throw InvalidArg("xfrom coordinate list is not given.");
-		GET_ARRAY(i.mXFromVector, "xfrom", it, column, size);
-		if (!i.mYFromVector) throw InvalidArg("yfrom coordinate list is not given.");
-		GET_ARRAY(i.mYFromVector, "yfrom", it, column, size);
-		if (!i.mXLenVector) throw InvalidArg("xlen coordinate list is not given.");
-		GET_ARRAY(i.mXLenVector, "xlen", it, column, size);
-		if (!i.mYLenVector) throw InvalidArg("ylen coordinate list is not given.");
-		GET_ARRAY(i.mYLenVector, "ylen", it, column, size);
-
-		if (i.mVariableColorVector)
-		{
-			GET_ARRAY(i.mVariableColorVector, "variable_color", it, column, size);
-		}
-	}
-	MakeFile(it, size, i.mGraph);
-	i.mColumn = std::move(column);
 	mParam.emplace_back(std::move(i));
 	return std::move(*this);
 }
+template <class GraphParam>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline GPMPlotReserver2D GPMPlotReserver2D::Plot(Options ...ops)
+inline GPMPlotBuffer2D<GraphParam> GPMPlotBuffer2D<GraphParam>::
+PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops)
 {
-	constexpr bool ispoint =
-		KeywordExists(plot::x, ops...) ||
-		KeywordExists(plot::y, ops...) ||
-		KeywordExists(plot::xerrorbar, ops...) ||
-		KeywordExists(plot::yerrorbar, ops...) ||
-		KeywordExists(plot::variable_color, ops...) ||
-		KeywordExists(plot::variable_size, ops...) ||
-		KeywordExists(plot::style, ops...) ||
-		KeywordExists(plot::pointtype, ops...) ||
-		KeywordExists(plot::pointsize, ops...) ||
-		KeywordExists(plot::linetype, ops...) ||
-		KeywordExists(plot::linewidth, ops...) ||
-		KeywordExists(plot::color, ops...);
-	constexpr bool isvector =
-		KeywordExists(plot::xfrom, ops...) ||
-		KeywordExists(plot::yfrom, ops...) ||
-		KeywordExists(plot::xlen, ops...) ||
-		KeywordExists(plot::ylen, ops...) ||
-		KeywordExists(plot::arrowcolor, ops...) ||
-		KeywordExists(plot::arrowwidth, ops...);
-
-	static_assert((int)ispoint + (int)isvector == 1, "There is a mix of options for different graph types.");
-
-	GPMGraphParam2D i;
-	i.mType = GPMGraphParam2D::DATA;
+	GraphParam i;
+	i.mType = GraphParam::DATA;
 	i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	i.mStyle = GetKeywordArg(plot::style, ops..., plot::LINES);
+	i.mStyle = GetKeywordArg(plot::style, ops..., Style::POINTS);
 	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
 
-#define GET_DATA_POINTER(KEYWORD, GPMGraphParamVAR)\
-		if (KeywordExists(KEYWORD, ops...))\
-			GPMGraphParamVAR = GetKeywordArg(KEYWORD, ops...);
-
 	//point
-	if (KeywordExists(plot::x, ops...)) i.mXPoint = GetKeywordArg(plot::x, ops...);
-	if (KeywordExists(plot::y, ops...)) i.mYPoint = GetKeywordArg(plot::y, ops...);
+	i.mXPoint = x;
+	i.mYPoint = y;
 	if (KeywordExists(plot::xerrorbar, ops...)) i.mXErrorbarPoint = GetKeywordArg(plot::xerrorbar, ops...);
 	if (KeywordExists(plot::yerrorbar, ops...)) i.mYErrorbarPoint = GetKeywordArg(plot::yerrorbar, ops...);
 	if (KeywordExists(plot::variable_color, ops...)) i.mVariableColorPoint = GetKeywordArg(plot::variable_color, ops...);
@@ -922,38 +899,62 @@ inline GPMPlotReserver2D GPMPlotReserver2D::Plot(Options ...ops)
 	i.mLineWidth = GetKeywordArg(plot::linewidth, ops..., -1);
 	i.mColor = GetKeywordArg(plot::color, ops..., "");
 
-	//vector
-	if (KeywordExists(plot::xfrom, ops...)) i.mXFromVector = GetKeywordArg(plot::xfrom, ops...);
-	if (KeywordExists(plot::yfrom, ops...)) i.mYFromVector = GetKeywordArg(plot::yfrom, ops...);
-	if (KeywordExists(plot::xlen, ops...)) i.mXLenVector = GetKeywordArg(plot::xlen, ops...);
-	if (KeywordExists(plot::ylen, ops...)) i.mYLenVector = GetKeywordArg(plot::ylen, ops...);
-	i.mArrowColor = GetKeywordArg(plot::arrowcolor, ops..., "");
-	i.mArrowWidth = GetKeywordArg(plot::arrowwidth, ops..., -1);
+	return Plot(i);
+}
+template <class GraphParam>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline GPMPlotBuffer2D<GraphParam> GPMPlotBuffer2D<GraphParam>::
+PlotPoints(const std::string& equation, Options ...ops)
+{
+	GraphParam i;
+	i.mGraph = equation;
+	i.mType = GraphParam::EQUATION;
+	i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	i.mStyle = GetKeywordArg(plot::style, ops..., Style::POINTS);
+	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+
+	//point
+	i.mPointType = GetKeywordArg(plot::pointtype, ops..., -1);
+	i.mPointSize = GetKeywordArg(plot::pointsize, ops..., -1);
+	i.mLineType = GetKeywordArg(plot::linetype, ops..., -1);
+	i.mLineWidth = GetKeywordArg(plot::linewidth, ops..., -1);
+	i.mColor = GetKeywordArg(plot::color, ops..., "");
 
 	return Plot(i);
 }
+template <class GraphParam>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline GPMPlotReserver2D GPMPlotReserver2D::PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options&& ...ops)
+inline GPMPlotBuffer2D<GraphParam> GPMPlotBuffer2D<GraphParam>::
+PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
+			const std::vector<double>& xlen, const std::vector<double>& ylen,
+			Options ...ops)
 {
-	return Plot(plot::x = x, plot::y = y, ops...);
+	GraphParam i;
+	i.mType = GraphParam::DATA;
+	i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+
+	i.mXFromVector = xfrom;
+	i.mYFromVector = yfrom;
+	i.mXLenVector = xlen;
+	i.mYLenVector = ylen;
+	i.mArrowColor = GetKeywordArg(plot::arrowcolor, ops..., "");
+	i.mArrowWidth = GetKeywordArg(plot::arrowwidth, ops..., -1);
+	if (KeywordExists(plot::variable_arrowcolor, ops...)) i.mVariableColorVector = GetKeywordArg(plot::variable_arrowcolor, ops...);
+
+	return Plot(i);
 }
-template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline GPMPlotReserver2D GPMPlotReserver2D::PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
-														const std::vector<double>& xlen, const std::vector<double>& ylen,
-														Options&& ...ops)
-{
-	return Plot(plot::xfrom = xfrom, plot::yfrom = yfrom, plot::xlen = xlen, plot::ylen = ylen, ops...);
-}
-inline std::string GPMPlotReserver2D::PlotCommand(const GPMGraphParam2D& p)
+template <class GraphParam>
+inline std::string GPMPlotBuffer2D<GraphParam>::PlotCommand(const GraphParam& p)
 {
 	//filename or equation
 	std::string c;
-	if (p.mType == detail::GPMGraphParam2D::EQUATION)
+	if (p.mType == GraphParam::EQUATION)
 	{
 		//equation
-		c += p.mGraph;
+		c += " " + p.mGraph;
 	}
-	else if (p.mType == detail::GPMGraphParam2D::DATA || p.mType == detail::GPMGraphParam2D::FILE)
+	else if (p.mType == GraphParam::DATA || p.mType == GraphParam::FILE)
 	{
 		//filename
 		c += "'" + p.mGraph + "'";
@@ -991,7 +992,8 @@ inline std::string GPMPlotReserver2D::PlotCommand(const GPMGraphParam2D& p)
 
 	return std::move(c);
 }
-inline std::string GPMPlotReserver2D::InitCommand()
+template <class GraphParam>
+inline std::string GPMPlotBuffer2D<GraphParam>::InitCommand()
 {
 	std::string c;
 	c += "set autoscale\n";
@@ -1002,31 +1004,33 @@ inline std::string GPMPlotReserver2D::InitCommand()
 	return std::move(c);
 }
 
+template <class GraphParam, template <class> class Buffer>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline Buffer<GraphParam> GPMCanvas2D<GraphParam, Buffer>::
+PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops)
+{
+	_Buffer r(this);
+	return r.PlotPoints(x, y, ops...);
+}
+template <class GraphParam, template <class> class Buffer>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline Buffer<GraphParam> GPMCanvas2D<GraphParam, Buffer>::
+PlotPoints(const std::string& equation, Options ...ops)
+{
+	_Buffer r(this);
+	return r.PlotPoints(equation, ops...);
+}
+template <class GraphParam, template <class> class Buffer>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline Buffer<GraphParam> GPMCanvas2D<GraphParam, Buffer>::
+PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
+			const std::vector<double>& xlen, const std::vector<double>& ylen,
+			Options ...ops)
+{
+	_Buffer r(this);
+	return r.PlotVectors(xfrom, yfrom, xlen, ylen, ops...);
 }
 
-inline detail::GPMPlotReserver2D GPMCanvas2D::Plot(detail::GPMGraphParam2D& i)
-{
-	detail::GPMPlotReserver2D r(this);
-	return r.Plot(i);
-}
-template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline detail::GPMPlotReserver2D GPMCanvas2D::Plot(Options ...ops)
-{
-	detail::GPMPlotReserver2D r(this);
-	return r.Plot(ops...);
-}
-template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline detail::GPMPlotReserver2D GPMCanvas2D::PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops)
-{
-	//usingに与えるもの。
-	return Plot(plot::x = x, plot::y = y, ops...);
-}
-template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline detail::GPMPlotReserver2D GPMCanvas2D::PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
-														  const std::vector<double>& xlen, const std::vector<double>& ylen,
-														  Options ...ops)
-{
-	return Plot(plot::xfrom = xfrom, plot::y = yfrom, plot::xlen = xlen, plot::ylen = ylen, ops...);
 }
 
 namespace plot
@@ -1049,7 +1053,6 @@ CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(ymaprange, CUF_TIE_ARGS(std::pair<doubl
 
 }
 
-class GPMCanvasCM;
 
 namespace detail
 {
@@ -1088,88 +1091,99 @@ struct GPMGraphParamCM : public GPMGraphParam2D
 	plot::MatrixData mZMap;
 };
 
-struct GPMPlotReserverCM
+template <class GraphParam>
+struct GPMPlotBufferCM
 {
-	GPMPlotReserverCM(GPMCanvasCM* g);
-	GPMPlotReserverCM(const GPMPlotReserverCM&) = delete;
-	GPMPlotReserverCM(GPMPlotReserverCM&& p);
-	virtual ~GPMPlotReserverCM();
-
-	GPMPlotReserverCM Plot(detail::GPMGraphParamCM& i);
-	template <class ...Options, bool B = AreAllKeywords<Options...>::value, std::enable_if_t<B, std::nullptr_t> = nullptr>
-	GPMPlotReserverCM Plot(Options ...ops);
+	GPMPlotBufferCM(GPMCanvas* g);
+	GPMPlotBufferCM(const GPMPlotBufferCM&) = delete;
+	GPMPlotBufferCM(GPMPlotBufferCM&& p);
+	virtual ~GPMPlotBufferCM();
 
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
-	GPMPlotReserverCM PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, Options ...ops);
+	GPMPlotBufferCM PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
-	GPMPlotReserverCM PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops);
+	GPMPlotBufferCM PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
+	GPMPlotBufferCM PlotPoints(const std::string& equation, Options ...ops);
+
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Vector3DOption)>
-	GPMPlotReserverCM PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom, const std::vector<double>& zfrom,
+	GPMPlotBufferCM PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom, const std::vector<double>& zfrom,
 								  const std::vector<double>& xlen, const std::vector<double>& ylen, const std::vector<double>& zlen,
 								  Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Vector3DOption)>
-	GPMPlotReserverCM PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
+	GPMPlotBufferCM PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
 								  const std::vector<double>& xlen, const std::vector<double>& ylen,
 								  Options ...ops);
 
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::ColormapOption)>
-	detail::GPMPlotReserverCM PlotColormap(const Matrix<double>& map, const std::vector<double>& x, const std::vector<double>& y,
-										   Options ...ops);
+	GPMPlotBufferCM PlotColormap(const Matrix<double>& map, const std::vector<double>& x, const std::vector<double>& y,
+								   Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::ColormapOption)>
-	detail::GPMPlotReserverCM PlotColormap(const Matrix<double>& map, std::pair<double, double> x, std::pair<double, double> y,
-										   Options ...ops);
-private:
+	GPMPlotBufferCM PlotColormap(const Matrix<double>& map, std::pair<double, double> x, std::pair<double, double> y,
+								   Options ...ops);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::ColormapOption)>
+	GPMPlotBufferCM PlotColormap(const std::string& equation, Options ...ops);
 
-	static std::string PlotCommand(const GPMGraphParamCM& i);
+protected:
+
+	GPMPlotBufferCM Plot(GraphParam& i);
+
+	static std::string PlotCommand(const GraphParam& i);
 	static std::string InitCommand();
 
-	std::vector<GPMGraphParamCM> mParam;
-	GPMCanvasCM* mCanvas;
+	std::vector<GraphParam> mParam;
+	GPMCanvas* mCanvas;
 };
 
-}
-
+template <class GraphParam, template <class> class Buffer>
 class GPMCanvasCM : public detail::GPM2DAxis<detail::GPMCanvas>
 {
 public:
 
+	using _Buffer = Buffer<GraphParam>;
+
 	GPMCanvasCM(const std::string& output);
 	GPMCanvasCM();
-	friend class detail::GPMPlotReserverCM;
+
 	friend class GPMMultiPlotter;
 
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
-	detail::GPMPlotReserverCM PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, Options ...ops);
+	_Buffer PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
-	detail::GPMPlotReserverCM PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops);
+	_Buffer PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
+	_Buffer PlotPoints(const std::string& equation, Options ...ops);
+
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Vector3DOption)>
-	detail::GPMPlotReserverCM PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom, const std::vector<double>& zfrom,
-										  const std::vector<double>& xlen, const std::vector<double>& ylen, const std::vector<double>& zlen,
-										  Options ...ops);
+	_Buffer PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom, const std::vector<double>& zfrom,
+						  const std::vector<double>& xlen, const std::vector<double>& ylen, const std::vector<double>& zlen,
+						  Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Vector3DOption)>
-	detail::GPMPlotReserverCM PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
-										  const std::vector<double>& xlen, const std::vector<double>& ylen,
-										  Options ...ops);
+	_Buffer PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
+						  const std::vector<double>& xlen, const std::vector<double>& ylen,
+						  Options ...ops);
 
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::ColormapOption)>
-	detail::GPMPlotReserverCM PlotColormap(const Matrix<double>& map, const std::vector<double>& x, const std::vector<double>& y,
-										   Options ...ops);
+	_Buffer PlotColormap(const Matrix<double>& map, const std::vector<double>& x, const std::vector<double>& y,
+						   Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::ColormapOption)>
-	detail::GPMPlotReserverCM PlotColormap(const Matrix<double>& map, std::pair<double, double> x, std::pair<double, double> y,
-										   Options ...ops);
+	_Buffer PlotColormap(const Matrix<double>& map, std::pair<double, double> x, std::pair<double, double> y,
+						   Options ...ops);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::ColormapOption)>
+	_Buffer PlotColormap(const std::string& equation, Options ...ops);
 };
 
-namespace detail
-{
-
-inline GPMPlotReserverCM::GPMPlotReserverCM(GPMCanvasCM* g)
+template <class GraphParam>
+inline GPMPlotBufferCM<GraphParam>::GPMPlotBufferCM(GPMCanvas* g)
 	: mCanvas(g) {}
-inline GPMPlotReserverCM::GPMPlotReserverCM(GPMPlotReserverCM&& p)
+template <class GraphParam>
+inline GPMPlotBufferCM<GraphParam>::GPMPlotBufferCM(GPMPlotBufferCM&& p)
 	: mCanvas(p.mCanvas), mParam(std::move(p.mParam))
 {
 	p.mCanvas = nullptr;
 }
-inline GPMPlotReserverCM::~GPMPlotReserverCM()
+template <class GraphParam>
+inline GPMPlotBufferCM<GraphParam>::~GPMPlotBufferCM()
 {
 	//mPipeがnullptrでないときはこのPlotterが最終処理を担当する。
 	if (mCanvas != nullptr)
@@ -1184,7 +1198,8 @@ inline GPMPlotReserverCM::~GPMPlotReserverCM()
 		mCanvas->Command(InitCommand());
 	}
 }
-inline GPMPlotReserverCM GPMPlotReserverCM::Plot(detail::GPMGraphParamCM& i)
+template <class GraphParam>
+inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam& i)
 {
 	const bool ispoint = i.IsPoint();
 	const bool isvector = i.IsVector();
@@ -1192,7 +1207,7 @@ inline GPMPlotReserverCM GPMPlotReserverCM::Plot(detail::GPMGraphParamCM& i)
 
 	if ((int)ispoint + (int)isvector + (int)ismap != 1) throw InvalidArg("");
 
-	i.mGraph = mCanvas->mOutput + ".tmp" + std::to_string(mParam.size()) + ".txt";
+	i.mGraph = mCanvas->GetOutput() + ".tmp" + std::to_string(mParam.size()) + ".txt";
 	auto GET_ARRAY = [](plot::ArrayData& X, const std::string& x,
 						std::vector<std::vector<double>::const_iterator>& it, std::vector<std::string>& column, size_t& size)
 	{
@@ -1357,48 +1372,21 @@ inline GPMPlotReserverCM GPMPlotReserverCM::Plot(detail::GPMGraphParamCM& i)
 	mParam.emplace_back(std::move(i));
 	return std::move(*this);
 }
+template <class GraphParam>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline GPMPlotReserverCM GPMPlotReserverCM::Plot(Options ...ops)
+inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::
+PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, Options ...ops)
 {
-	constexpr bool ispoint =
-		KeywordExists(plot::x, ops...) ||
-		KeywordExists(plot::y, ops...) ||
-		KeywordExists(plot::xerrorbar, ops...) ||
-		KeywordExists(plot::yerrorbar, ops...) ||
-		KeywordExists(plot::variable_color, ops...) ||
-		KeywordExists(plot::variable_color, ops...) ||
-		KeywordExists(plot::style, ops...) ||
-		KeywordExists(plot::pointtype, ops...) ||
-		KeywordExists(plot::pointsize, ops...) ||
-		KeywordExists(plot::linetype, ops...) ||
-		KeywordExists(plot::linewidth, ops...) ||
-		KeywordExists(plot::color, ops...);
-	constexpr bool isvector =
-		KeywordExists(plot::xfrom, ops...) ||
-		KeywordExists(plot::yfrom, ops...) ||
-		KeywordExists(plot::xlen, ops...) ||
-		KeywordExists(plot::ylen, ops...) ||
-		KeywordExists(plot::arrowcolor, ops...) ||
-		KeywordExists(plot::arrowwidth, ops...);
-	constexpr bool ismap =
-		KeywordExists(plot::map, ops...) ||
-		KeywordExists(plot::xcoord, ops...) ||
-		KeywordExists(plot::ycoord, ops...) ||
-		KeywordExists(plot::xmaprange, ops...) ||
-		KeywordExists(plot::ymaprange, ops...);
-
-	static_assert((int)ispoint + (int)isvector + (int)ismap == 1, "There is a mix of options for different graph types.");
-
-	GPMGraphParamCM i;
-	i.mType = GPMGraphParamCM::DATA;
+	GraphParam i;
+	i.mType = GraphParam::DATA;
 	i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	i.mStyle = GetKeywordArg(plot::style, ops..., plot::LINES);
+	i.mStyle = GetKeywordArg(plot::style, ops..., Style::POINTS);
 	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
 
 	//point
-	if (KeywordExists(plot::x, ops...)) i.mXPoint = GetKeywordArg(plot::x, ops...);
-	if (KeywordExists(plot::y, ops...)) i.mYPoint = GetKeywordArg(plot::y, ops...);
-	if (KeywordExists(plot::z, ops...)) i.mZPoint = GetKeywordArg(plot::z, ops...);
+	i.mXPoint = x;
+	i.mYPoint = y;
+	i.mZPoint = z;
 	if (KeywordExists(plot::xerrorbar, ops...)) i.mXErrorbarPoint = GetKeywordArg(plot::xerrorbar, ops...);
 	if (KeywordExists(plot::yerrorbar, ops...)) i.mYErrorbarPoint = GetKeywordArg(plot::yerrorbar, ops...);
 	if (KeywordExists(plot::variable_color, ops...)) i.mVariableColorPoint = GetKeywordArg(plot::variable_color, ops...);
@@ -1408,77 +1396,165 @@ inline GPMPlotReserverCM GPMPlotReserverCM::Plot(Options ...ops)
 	i.mLineType = GetKeywordArg(plot::linetype, ops..., -1);
 	i.mLineWidth = GetKeywordArg(plot::linewidth, ops..., -1);
 	i.mColor = GetKeywordArg(plot::color, ops..., "");
+	return Plot(i);
+}
+template <class GraphParam>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::
+PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops)
+{
+	GraphParam i;
+	i.mType = GraphParam::DATA;
+	i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	i.mStyle = GetKeywordArg(plot::style, ops..., Style::POINTS);
+	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+
+	//point
+	i.mXPoint = x;
+	i.mYPoint = y;
+	i.mZPoint = 0.;
+	if (KeywordExists(plot::xerrorbar, ops...)) i.mXErrorbarPoint = GetKeywordArg(plot::xerrorbar, ops...);
+	if (KeywordExists(plot::yerrorbar, ops...)) i.mYErrorbarPoint = GetKeywordArg(plot::yerrorbar, ops...);
+	if (KeywordExists(plot::variable_color, ops...)) i.mVariableColorPoint = GetKeywordArg(plot::variable_color, ops...);
+	if (KeywordExists(plot::variable_size, ops...)) i.mVariableSizePoint = GetKeywordArg(plot::variable_size, ops...);
+	i.mPointType = GetKeywordArg(plot::pointtype, ops..., -1);
+	i.mPointSize = GetKeywordArg(plot::pointsize, ops..., -1);
+	i.mLineType = GetKeywordArg(plot::linetype, ops..., -1);
+	i.mLineWidth = GetKeywordArg(plot::linewidth, ops..., -1);
+	i.mColor = GetKeywordArg(plot::color, ops..., "");
+	return Plot(i);
+}
+template <class GraphParam>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::
+PlotPoints(const std::string& equation, Options ...ops)
+{
+	GraphParam i;
+	i.mType = GraphParam::EQUATION;
+	i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	i.mStyle = GetKeywordArg(plot::style, ops..., Style::POINTS);
+	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+
+	i.mGraph = equation;
+	//point
+	i.mPointType = GetKeywordArg(plot::pointtype, ops..., -1);
+	i.mPointSize = GetKeywordArg(plot::pointsize, ops..., -1);
+	i.mLineType = GetKeywordArg(plot::linetype, ops..., -1);
+	i.mLineWidth = GetKeywordArg(plot::linewidth, ops..., -1);
+	i.mColor = GetKeywordArg(plot::color, ops..., "");
+	return Plot(i);
+}
+template <class GraphParam>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::
+PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom, const std::vector<double>& zfrom,
+			const std::vector<double>& xlen, const std::vector<double>& ylen, const std::vector<double>& zlen,
+			Options ...ops)
+{
+	GraphParam i;
+	i.mType = GraphParam::DATA;
+	i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
 
 	//vector
-	if (KeywordExists(plot::xfrom, ops...)) i.mXFromVector = GetKeywordArg(plot::xfrom, ops...);
-	if (KeywordExists(plot::yfrom, ops...)) i.mYFromVector = GetKeywordArg(plot::yfrom, ops...);
-	if (KeywordExists(plot::zfrom, ops...)) i.mZFromVector = GetKeywordArg(plot::zfrom, ops...);
-	if (KeywordExists(plot::xlen, ops...)) i.mXLenVector = GetKeywordArg(plot::xlen, ops...);
-	if (KeywordExists(plot::ylen, ops...)) i.mYLenVector = GetKeywordArg(plot::ylen, ops...);
-	if (KeywordExists(plot::zlen, ops...)) i.mZLenVector = GetKeywordArg(plot::zlen, ops...);
+	i.mXFromVector = xfrom;
+	i.mYFromVector = yfrom;
+	i.mZFromVector = zfrom;
+	i.mXLenVector = xlen;
+	i.mYLenVector = ylen;
+	i.mZLenVector = zlen;
 	i.mArrowColor = GetKeywordArg(plot::arrowcolor, ops..., "");
 	i.mArrowWidth = GetKeywordArg(plot::arrowwidth, ops..., -1);
-
-	//map
-	if (KeywordExists(plot::xcoord, ops...)) i.mXCoordMap = GetKeywordArg(plot::xcoord, ops...);
-	if (KeywordExists(plot::ycoord, ops...)) i.mYCoordMap = GetKeywordArg(plot::ycoord, ops...);
-	if (KeywordExists(plot::map, ops...)) i.mZMap = GetKeywordArg(plot::map, ops...);
-	i.mXRangeMap = GetKeywordArg(plot::xmaprange, ops..., std::make_pair(DBL_MAX, -DBL_MAX));
-	i.mYRangeMap = GetKeywordArg(plot::ymaprange, ops..., std::make_pair(DBL_MAX, -DBL_MAX));
+	if (KeywordExists(plot::variable_arrowcolor, ops...)) i.mVariableColorVector = GetKeywordArg(plot::variable_arrowcolor, ops...);
 
 	return Plot(i);
 }
+template <class GraphParam>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline GPMPlotReserverCM GPMPlotReserverCM::
-PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, Options ...ops)
+inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::
+PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
+			const std::vector<double>& xlen, const std::vector<double>& ylen,
+			Options ...ops)
 {
-	return Plot(plot::x = x, plot::y = y, plot::z = z, ops...);
+	GraphParam i;
+	i.mType = GraphParam::DATA;
+	i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+
+	//vector
+	i.mXFromVector = xfrom;
+	i.mYFromVector = yfrom;
+	i.mZFromVector = 0.;
+	i.mXLenVector = xlen;
+	i.mYLenVector = ylen;
+	i.mZLenVector = 0.;
+	i.mArrowColor = GetKeywordArg(plot::arrowcolor, ops..., "");
+	i.mArrowWidth = GetKeywordArg(plot::arrowwidth, ops..., -1);
+	if (KeywordExists(plot::variable_arrowcolor, ops...)) i.mVariableColorVector = GetKeywordArg(plot::variable_arrowcolor, ops...);
+
+	return Plot(i);
 }
+template <class GraphParam>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline GPMPlotReserverCM GPMPlotReserverCM::PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops)
+inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::
+PlotColormap(const Matrix<double>& map, const std::vector<double>& x, const std::vector<double>& y,
+			 Options ...ops)
 {
-	return Plot(plot::x = x, plot::y = y, plot::z = 0, ops...);
+	GraphParam i;
+	i.mType = GraphParam::DATA;
+	i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+
+	//map
+	i.mXCoordMap = x;
+	i.mYCoordMap = y;
+	i.mZMap = map;
+
+	return Plot(i);
 }
+template <class GraphParam>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline GPMPlotReserverCM GPMPlotReserverCM::PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom, const std::vector<double>& zfrom,
-														const std::vector<double>& xlen, const std::vector<double>& ylen, const std::vector<double>& zlen,
-														Options ...ops)
+inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::
+PlotColormap(const std::string& equation, Options ...ops)
 {
-	return Plot(plot::xfrom = xfrom, plot::yfrom = yfrom, plot::zfrom = zfrom,
-				plot::xlen = xlen, plot::ylen = ylen, plot::zlen = zlen,
-				ops...);
+	GraphParam i;
+	i.mType = GraphParam::DATA;
+	i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+
+	//map
+	return Plot(i);
 }
+template <class GraphParam>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline GPMPlotReserverCM GPMPlotReserverCM::PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
-														const std::vector<double>& xlen, const std::vector<double>& ylen,
-														Options ...ops)
+inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::
+PlotColormap(const Matrix<double>& map, std::pair<double, double> x, std::pair<double, double> y,
+			 Options ...ops)
 {
-	return Plot(plot::xfrom = xfrom, plot::yfrom = yfrom, plot::zfrom = 0.,
-				plot::xlen = xlen, plot::ylen = ylen, plot::zlen = 0.,
-				ops...);
+	GraphParam i;
+	i.mType = GraphParam::DATA;
+	i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	//i.mStyle = GetKeywordArg(plot::style, ops..., plot::LINES);
+	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+
+	//map
+	i.mZMap = map;
+	i.mXRangeMap = x;
+	i.mYRangeMap = y;
+
+	return Plot(i);
 }
-template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-detail::GPMPlotReserverCM GPMPlotReserverCM::PlotColormap(const Matrix<double>& map, const std::vector<double>& x, const std::vector<double>& y,
-														  Options ...ops)
-{
-	return Plot(plot::map = map, plot::xcoord = x, plot::ycoord = y, ops...);
-}
-template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-detail::GPMPlotReserverCM GPMPlotReserverCM::PlotColormap(const Matrix<double>& map, std::pair<double, double> x, std::pair<double, double> y,
-														  Options ...ops)
-{
-	return Plot(plot::map = map, plot::xmaprange = x, plot::ymaprange = y, ops...);
-}
-inline std::string GPMPlotReserverCM::PlotCommand(const GPMGraphParamCM& p)
+template <class GraphParam>
+inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p)
 {
 	//filename or equation
 	std::string c;
-	if (p.mType == detail::GPMGraphParam2D::EQUATION)
+	if (p.mType == GraphParam::EQUATION)
 	{
 		//equation
-		c += p.mGraph;
+		c += " " + p.mGraph;
 	}
-	else if (p.mType == detail::GPMGraphParam2D::DATA || p.mType == detail::GPMGraphParam2D::FILE)
+	else if (p.mType == GraphParam::DATA || p.mType == GraphParam::FILE)
 	{
 		//filename
 		c += "'" + p.mGraph + "'";
@@ -1523,7 +1599,8 @@ inline std::string GPMPlotReserverCM::PlotCommand(const GPMGraphParamCM& p)
 
 	return std::move(c);
 }
-inline std::string GPMPlotReserverCM::InitCommand()
+template <class GraphParam>
+inline std::string GPMPlotBufferCM<GraphParam>::InitCommand()
 {
 	std::string c;
 	c += "set autoscale\n";
@@ -1535,9 +1612,8 @@ inline std::string GPMPlotReserverCM::InitCommand()
 	return std::move(c);
 }
 
-}
-
-inline GPMCanvasCM::GPMCanvasCM(const std::string& output)
+template <class GraphParam, template <class> class Buffer>
+inline GPMCanvasCM<GraphParam, Buffer>::GPMCanvasCM(const std::string& output)
 	: detail::GPM2DAxis<detail::GPMCanvas>(output)
 {
 	if (mPipe)
@@ -1546,7 +1622,8 @@ inline GPMCanvasCM::GPMCanvasCM(const std::string& output)
 		Command("set view map");
 	}
 }
-inline GPMCanvasCM::GPMCanvasCM()
+template <class GraphParam, template <class> class Buffer>
+inline GPMCanvasCM<GraphParam, Buffer>::GPMCanvasCM()
 {
 	if (mPipe)
 	{
@@ -1555,49 +1632,81 @@ inline GPMCanvasCM::GPMCanvasCM()
 	}
 }
 
+template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline detail::GPMPlotReserverCM GPMCanvasCM::PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, Options ...ops)
+inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, Options ...ops)
 {
-	detail::GPMPlotReserverCM p(this);
+	_Buffer p(this);
 	return p.PlotPoints(x, y, z, ops...);
 }
+template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline detail::GPMPlotReserverCM GPMCanvasCM::PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops)
+inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops)
 {
-	detail::GPMPlotReserverCM p(this);
+	_Buffer p(this);
 	return p.PlotPoints(x, y, ops...);
 }
+template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline detail::GPMPlotReserverCM GPMCanvasCM::PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom, const std::vector<double>& zfrom,
-														  const std::vector<double>& xlen, const std::vector<double>& ylen, const std::vector<double>& zlen,
-														  Options ...ops)
+inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotPoints(const std::string& equation, Options ...ops)
 {
-	detail::GPMPlotReserverCM p(this);
+	_Buffer p(this);
+	return p.PlotPoints(equation, ops...);
+}
+template <class GraphParam, template <class> class Buffer>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom, const std::vector<double>& zfrom,
+			const std::vector<double>& xlen, const std::vector<double>& ylen, const std::vector<double>& zlen,
+			Options ...ops)
+{
+	_Buffer p(this);
 	return p.PlotVectors(xfrom, yfrom, zfrom, xlen, ylen, zlen, ops...);
 }
+template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-inline detail::GPMPlotReserverCM GPMCanvasCM::PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
-														  const std::vector<double>& xlen, const std::vector<double>& ylen,
-														  Options ...ops)
+inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
+			const std::vector<double>& xlen, const std::vector<double>& ylen,
+			Options ...ops)
 {
-	detail::GPMPlotReserverCM p(this);
+	_Buffer p(this);
 	return p.PlotVectors(xfrom, yfrom, xlen, ylen, ops...);
 }
+template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-detail::GPMPlotReserverCM GPMCanvasCM::PlotColormap(const Matrix<double>& map, const std::vector<double>& x, const std::vector<double>& y,
-													Options ...ops)
+Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotColormap(const Matrix<double>& map, const std::vector<double>& x, const std::vector<double>& y,
+			 Options ...ops)
 {
-	detail::GPMPlotReserverCM p(this);
+	_Buffer p(this);
 	return p.PlotColormap(map, x, y, ops...);
 }
+template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
-detail::GPMPlotReserverCM GPMCanvasCM::PlotColormap(const Matrix<double>& map, std::pair<double, double> x, std::pair<double, double> y,
-													Options ...ops)
+Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotColormap(const Matrix<double>& map, std::pair<double, double> x, std::pair<double, double> y,
+			 Options ...ops)
 {
-	detail::GPMPlotReserverCM p(this);
+	_Buffer p(this);
 	return p.PlotColormap(map, x, y, ops...);
+}
+template <class GraphParam, template <class> class Buffer>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotColormap(const std::string& equation, Options ...ops)
+{
+	_Buffer p(this);
+	return p.PlotColormap(equation, ops...);
 }
 
+}
+
+using GPMCanvas2D = detail::GPMCanvas2D<detail::GPMGraphParam2D, detail::GPMPlotBuffer2D>;
+using GPMCanvasCM = detail::GPMCanvasCM<detail::GPMGraphParamCM, detail::GPMPlotBufferCM>;
 
 class GPMMultiPlotter
 {

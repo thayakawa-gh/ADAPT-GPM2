@@ -13,6 +13,7 @@
 #include <random>
 #include <sstream>
 #include <functional>
+#include <ADAPT/CUF/Template.h>
 
 namespace adapt
 {
@@ -214,6 +215,154 @@ inline int _pclose(FILE* stream)\
 return _pclose(stream); \
 }
 #endif
+
+namespace detail
+{
+
+template <class Iterators, class IndexSequence>
+class BundledIterator_impl;
+template <class ...Iterators, std::size_t ...Indices>
+class BundledIterator_impl<std::tuple<Iterators...>, std::index_sequence<Indices...>>
+{
+public:
+	BundledIterator_impl(Iterators... cs)
+		: mIterators(cs...)
+	{}
+
+	BundledIterator_impl& operator++()
+	{
+		int d[] = { (++std::get<Indices>(mIterators), 0)... };
+		return *this;
+	}
+	auto operator*() const noexcept
+	{
+		return std::forward_as_tuple(*std::get<Indices>(mIterators)...);
+	}
+	bool operator==(const BundledIterator_impl& it) const
+	{
+		return std::get<0>(mIterators) == std::get<0>(it.mIterators);
+	}
+	bool operator!=(const BundledIterator_impl& it) const
+	{
+		return !(*this == it);
+	}
+
+private:
+	std::tuple<Iterators...> mIterators;
+
+};
+
+}
+
+template <class ...Iterators>
+using BundledIterator = detail::BundledIterator_impl<std::tuple<Iterators...>, std::make_index_sequence<sizeof...(Iterators)>>;
+
+template <class ...Iterators>
+class BundledIteratorWithIndex
+	: public BundledIterator<Iterators...>
+{
+public:
+	BundledIteratorWithIndex(std::size_t index, Iterators... cs) : BundledIterator<Iterators...>(cs...), mIndex(index) {}
+
+	BundledIteratorWithIndex& operator++()
+	{
+		++mIndex;
+		BundledIterator<Iterators...>::operator++();
+		return *this;
+	}
+	auto operator*() const noexcept
+	{
+		return std::tuple_cat(std::make_tuple(mIndex), BundledIterator<Iterators...>::operator*());
+	}
+
+private:
+	std::size_t mIndex;
+};
+
+template <class ...Iterators>
+BundledIterator<Iterators...> MakeBundledIterator(Iterators ...it)
+{
+	return BundledIterator<Iterators...>(it...);
+}
+template <class ...Iterators>
+BundledIteratorWithIndex<Iterators...> MakeBundledIteratorWithIndex(std::size_t index, Iterators ...it)
+{
+	return BundledIteratorWithIndex<Iterators...>(index, it...);
+}
+
+namespace detail
+{
+
+template <class Iterators, class IndexSequence>
+class BundledRange_impl;
+template <class ...Containers, std::size_t ...Indices>
+class BundledRange_impl<std::tuple<Containers...>, std::index_sequence<Indices...>>
+{
+public:
+
+	BundledRange_impl(Containers&... c)
+		: mContainers(c...) {}
+
+	auto begin() const
+	{
+		return MakeBundledIterator(std::get<Indices>(mContainers).begin()...);
+	}
+	auto end() const
+	{
+		return MakeBundledIterator(std::get<Indices>(mContainers).end()...);
+	}
+
+private:
+	std::tuple<Containers&...> mContainers;
+};
+
+}
+
+template <class ...Containers>
+using BundledRange = detail::BundledRange_impl<std::tuple<Containers...>, std::make_index_sequence<sizeof...(Containers)>>;
+
+namespace detail
+{
+
+template <class Iterators, class IndexSequence>
+class BundledRangeWithIndex_impl;
+template <class ...Containers, std::size_t ...Indices>
+class BundledRangeWithIndex_impl<std::tuple<Containers...>, std::index_sequence<Indices...>>
+{
+public:
+
+	BundledRangeWithIndex_impl(Containers&... c)
+		: mContainers(c...) {}
+
+	auto begin() const
+	{
+		return MakeBundledIteratorWithIndex(0, std::get<Indices>(mContainers).begin()...);
+	}
+	auto end() const
+	{
+		return MakeBundledIteratorWithIndex(std::get<0>(mContainers).size(), std::get<Indices>(mContainers).end()...);
+	}
+
+private:
+	std::tuple<Containers&...> mContainers;
+};
+
+}
+
+template <class ...Containers>
+using BundledRangeWithIndex = detail::BundledRangeWithIndex_impl<std::tuple<Containers...>, std::make_index_sequence<sizeof...(Containers)>>;
+
+template <class ...Containers>
+BundledRange<Containers...> MakeBundledRange(Containers& ...cs)
+{
+	return BundledRange<Containers...>(cs...);
+}
+
+template <class ...Containers>
+BundledRangeWithIndex<Containers...> MakeBundledRangeWithIndex(Containers& ...cs)
+{
+	return BundledRangeWithIndex<Containers...>(cs...);
+}
 
 }
 

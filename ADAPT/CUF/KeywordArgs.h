@@ -120,12 +120,6 @@ struct GetKeywordArg_impl<std::numeric_limits<std::size_t>::max()>
 	}
 };
 
-template <class Option, class Tag>
-struct IsTaggedWith
-{
-	static constexpr bool value = std::is_base_of<typename Option::_Tag, Tag>::value;
-};
-
 }
 
 template <class Type>
@@ -162,8 +156,25 @@ constexpr auto NAME = adapt::detail::KeywordName<struct _##NAME, TYPE, void>();
 #define CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(NAME, TYPE, TAG)\
 constexpr auto NAME = adapt::detail::KeywordName<struct _##NAME, TYPE, TAG>();
 
+namespace detail
+{
+
+template <class Option, class Tag, bool B = IsKeyword<Option>::value>
+struct IsTaggedWith
+{
+	static constexpr bool value = false;
+};
+template <class Option, class Tag>
+struct IsTaggedWith<Option, Tag, true>
+{
+	static constexpr bool value = std::is_base_of<typename Option::_Tag, Tag>::value;
+};
+
+}
+
 #define CUF_TAGGED_ARGS_ENABLER(OPTIONS, TAG)\
-bool CUF_TAG_IS_BASE_OF_ARGTAG = (sizeof...(OPTIONS) == 0||AndOperationSeq<adapt::detail::IsTaggedWith<OPTIONS, TAG>::value...>::value),\
+bool CUF_TAG_IS_BASE_OF_ARGTAG = (sizeof...(OPTIONS) == 0 ||\
+								  AndOperationSeq<adapt::detail::IsTaggedWith<std::remove_reference_t<OPTIONS>, TAG>::value...>::value),\
 std::enable_if_t<CUF_TAG_IS_BASE_OF_ARGTAG, std::nullptr_t> = nullptr
 
 template <class Keyword, class ...Args>
