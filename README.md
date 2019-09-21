@@ -17,9 +17,9 @@ g.SetXLabel("x");
 g.SetYLabel("y");
 
 g.PlotPoints(x, y, plot::variable_color = c,
-            plot::style = plot::LINES, plot::title = "variable color lines").
+            plot::style = Style::lines, plot::title = "variable color lines").
   PlotPoints(x, y, plot::xerrorbar = 1.0, plot::yerrorbar = e,
-            plot::style = plot::POINTS, plot::title = "points with error bars");
+            plot::style = Style::points, plot::title = "points with error bars");
 ```
 <img src="https://user-images.githubusercontent.com/53743073/62621795-c599e000-b957-11e9-9d69-f20dfaefec81.png" width="480px">
 <img src="https://user-images.githubusercontent.com/53743073/62621810-d185a200-b957-11e9-8489-740bdbac29d8.png" width="480px">
