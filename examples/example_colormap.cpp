@@ -32,7 +32,7 @@ double fieldy(double x, double y)
 }
 int main()
 {
-	GPMCanvas::SetGnuplotPath("path to gnuplot");
+	//GPMCanvas::SetGnuplotPath("path to gnuplot");
 
 	adapt::Matrix<double> m(200, 200);
 	std::vector<double> xfrom(400), yfrom(400), xlen(400), ylen(400);
@@ -57,7 +57,23 @@ int main()
 			}
 		}
 	}
-	GPMCanvasCM g(""example_colormap.png");
+
+	/* options for Colormap
+	title          ... title.
+	axis           ... set of axes to scale lines. (e.g. plot::axis = "x1y2")
+	*/
+
+	/* options for Vectors
+	title          ... title.
+	axis           ... set of axes to scale lines. (e.g. plot::axis = "x1y2")
+	color          ... uniform color.
+	variable_color ... different color at each point.
+	linetype       ... line type. see GNUPLOT's keyword "linetype"
+	linewidth      ... uniform line width.
+	arrowhead      ... arrowhead style. (e.g. plot::arrowhead = ArrowHead::heads + ArrowHead::nofilled)
+	*/
+
+	GPMCanvasCM g("example_colormap.png");
 	g.SetPaletteDefined({ { 0, "cyan" }, { 3.6, "blue" }, { 4., "black" }, { 4.4, "red"}, { 8, "yellow" } });
 	g.SetTitle("example\\_colormap");
 	g.SetSizeRatio(-1);
@@ -69,6 +85,6 @@ int main()
 	std::pair<double, double> xrange = { -10, 10 };
 	std::pair<double, double> yrange = { -10, 10 };
 	g.PlotColormap(m, xrange, yrange, plot::title = "notitle").
-		PlotVectors(xfrom, yfrom, xlen, ylen, plot::title = "notitle", plot::arrowcolor = "white");
+		PlotVectors(xfrom, yfrom, xlen, ylen, plot::title = "notitle", plot::color = "white");
 	return 0;
 }

@@ -83,6 +83,9 @@
 namespace adapt
 {
 
+inline namespace cuf
+{
+
 namespace detail
 {
 
@@ -164,7 +167,7 @@ template <class Value>
 struct Write_impl<bool, Value, true> { static void f(std::ostream& str, const Value& v) { str << (v != 0); } };
 #endif
 template <class Type, class Value>
-struct Write_impl<Type, Value, false> { static void f(std::ostream& str, const Value& v) { throw std::exception(); } };
+struct Write_impl<Type, Value, false> { static void f(std::ostream&, const Value&) { throw std::exception(); } };
 
 template <class Type, class Value>
 void Write(std::ostream& str, const Value& v)
@@ -176,7 +179,7 @@ template <class Value, bool IsArithmetic = std::is_arithmetic<Value>::value, boo
 struct WriteAnyInt_impl
 {
 	//正しくない動作。
-	static void f(std::ostream& str, Value v) { throw std::exception(); }
+	static void f(std::ostream&, Value) { throw std::exception(); }
 };
 template <class Value>
 struct WriteAnyInt_impl<Value, true, true, true>
@@ -197,6 +200,8 @@ struct WriteAnyInt_impl<char, true, true, true>
 	//整数かつsignedであるような正しい動作だが、
 	//charなので文字出力にならないよう特殊化する。
 	//charとsigned charは別扱いなので特殊化も分離する。
+	//charは環境によってはunsignedである場合もあるが、
+	//その場合はIsSignedがfalseになるので型の不一致扱いとなり、この関数は呼ばれない。
 	static void f(std::ostream& str, char v) { str << +v; }
 };
 template <>
@@ -229,7 +234,7 @@ template <class Value, bool IsArithmetic = std::is_arithmetic<Value>::value, boo
 struct WriteAnyUnsignedInt_impl
 {
 	//正しくない動作。
-	static void f(std::ostream& str, Value v) { throw std::exception(); }
+	static void f(std::ostream&, Value) { throw std::exception(); }
 };
 template <class Value>
 struct WriteAnyUnsignedInt_impl<Value, true, true, true>
@@ -281,7 +286,7 @@ void WriteAnyUnsignedInt(std::ostream& str, Value v)
 template <class Value, bool IsArithmetic = std::is_arithmetic<Value>::value, bool IsFloat = std::is_floating_point<Value>::value>
 struct WriteAnyFloat_impl
 {
-	static void f(std::ostream& str, Value v) { throw std::exception(); }
+	static void f(std::ostream&, Value) { throw std::exception(); }
 };
 template <class Value>
 struct WriteAnyFloat_impl<Value, true, true>
@@ -453,7 +458,7 @@ inline void AddArg(std::string& result, std::string::const_iterator& it, const s
 }
 
 inline void Format_impl(std::string& result,
-				 std::string::const_iterator& it, std::string::const_iterator& itend)
+						std::string::const_iterator& it, std::string::const_iterator& itend)
 {
 	while (it != itend)
 	{
@@ -478,8 +483,6 @@ void Format_impl(std::string& result,
 				 std::string::const_iterator& it, std::string::const_iterator& itend,
 				 const Value& value, const Values& ...values)
 {
-	if (it == itend) return;
-
 	while (it != itend)
 	{
 		switch (*it)
@@ -509,6 +512,8 @@ std::string Format(const std::string& format, const Values& ...values)
 	std::string result;
 	detail::Format_impl(result, it, itend, values...);
 	return std::move(result);
+}
+
 }
 
 }

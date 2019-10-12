@@ -10,7 +10,7 @@ using namespace adapt::gpm2;
 
 int main()
 {
-	GPMCanvas::SetGnuplotPath("path to gnuplot");
+	//GPMCanvas::SetGnuplotPath("path to gnuplot");
 
 	std::string norm = std::to_string(250. / std::sqrt(2 * 3.1415926535));
 	std::string equation = norm + "*exp(-x*x/2)";
@@ -33,15 +33,31 @@ int main()
 		e1[i] = std::sqrt(y1[i]);
 	}
 
+	/* options for PlotPoints(...)
+	title          ... title.
+	axis           ... set of axes to scale lines. (e.g. plot::axis = "x1y2")
+	color          ... uniform color.
+	variable_color ... different color at each point.
+	linetype       ... line type. see GNUPLOT's keyword "linetype"
+	linewidth      ... uniform line width.
+	style          ... displaying style.
+	pointtype      ... each point is drawn as the symbol specified by this option.
+	pointsize      ... uniform point size.
+	variable_size  ... different size at each point.
+	smooth         ... interpolation and approximation by some routines.
+	xerrorbar      ... xerrorbar
+	yerrorbar      ... yerrorbar
+	*/
+
 	GPMCanvas2D g("example_2d.png");
 	g.SetTitle("example\\_2d");
 	g.SetXRange(-4.0, 4.0);
 	g.SetXLabel("x");
 	g.SetYLabel("y");
-	g.PlotPoints(equation, plot::title = "mean = 0, sigma = 1",
-				 plot::style = Style::LINES).
+	g.PlotPoints(equation, plot::title = "mu = 0, sigma^2 = 1",
+				 plot::style = Style::lines).
 		PlotPoints(x1, y1, plot::xerrorbar = 0.125, plot::yerrorbar = e1,
 				   plot::title = "data", plot::color = "black",
-				   plot::style = Style::POINTS, plot::pointtype = 7, plot::pointsize = 0.5);
+				   plot::style = Style::points, plot::pointtype = 7, plot::pointsize = 0.5);
 	return 0;
 }

@@ -15,94 +15,105 @@
 namespace adapt
 {
 
-//関数の引数にPythonっぽいキーワード可変長引数を作るための補助クラス。
+inline namespace cuf
+{
+
+//関数の引数にキーワード引数を作るための補助クラス。
 //func(param1 = x, param2 = y);みたいな呼び出しをしたい.
+
+
+//任意の型を受け取ることのできるキーワードを作りたい場合、これを与える。
+class AnyTypeKeyword {};
 
 namespace detail
 {
 
-template <class Name, class Type, class Tag>
+template <class Name_, class Type_, class Tag_>
 struct KeywordValue
 {
-	using _Type = Type;
-	using _Tag = Tag;
+	using Name = Name_;
+	using Type = Type_;
+	using Tag = Tag_;
 
-	KeywordValue(_Type v) : mValue(std::forward<_Type>(v)) {}
-	_Type Get() { return std::forward<_Type>(mValue); }
+	KeywordValue(Type v) : mValue(std::forward<Type>(v)) {}
+	Type Get() { return std::forward<Type>(mValue); }
+	template <class T>
+	constexpr bool Is() const { return std::is_same<T, Type>::value; }
 private:
-	_Type mValue;
+	Type mValue;
 };
+
 template <class Name, class Type, class Tag>
 struct KeywordName;
-template <class Name, class Type, class Tag>
+template <class Name_, class Type_, class Tag_>
 struct KeywordName
 {
-	using _Type = Type;
-	using _Value = KeywordValue<Name, Type, Tag>;
-	using _Tag = Tag;
+	using Name = Name_;
+	using Type = Type_;
+	using Tag = Tag_;
+	using Value = KeywordValue<Name, Type, Tag>;
 
 	constexpr KeywordName() {}
-	constexpr _Value operator=(_Type v) const { return _Value(std::forward<_Type>(v)); }
+	constexpr Value operator=(Type v) const { return Value(std::forward<Type>(v)); }
 };
-template <class Name, class Tag>
-struct KeywordName<Name, void, Tag>
+template <class Name_, class Tag_>
+struct KeywordName<Name_, AnyTypeKeyword, Tag_>
 {
-	using _Type = void;
-	using _Value = KeywordName<Name, void, Tag>;
-	using _Tag = Tag;
+	using Name = Name_;
+	using Tag = Tag_;
+
+	constexpr KeywordName() {}
+	template <class Type>
+	constexpr KeywordValue<Name, Type, Tag> operator=(Type&& v) const
+	{
+		return KeywordValue<Name, Type, Tag>;
+		(std::forward<Type>(v));
+	}
+};
+template <class Name_, class Tag_>
+struct KeywordName<Name_, bool, Tag_>
+{
+	using Name = Name_;
+	using Type = bool;
+	using Tag = Tag_;
+	using Value = KeywordValue<Name, bool, Tag>;
+
+	//キーワード名インスタンスのみが与えられている場合、trueとして扱う。
+	static constexpr bool Get() { return true; }
+	constexpr Value operator=(bool v) const { return Value(v); }
 };
 
 template <class Keyword, class Arg1,
-	class Dummy = void,
-	bool B = !std::is_convertible<Arg1, typename Keyword::_Type>::value,
-	std::enable_if_t<B, std::nullptr_t> = nullptr>
-std::remove_reference_t<typename Keyword::_Type> GetDefault(Keyword keyword, Arg1&& arg1)
+	std::enable_if_t<!std::is_constructible<typename Keyword::Type, Arg1>::value, std::nullptr_t> = nullptr>
+	std::remove_reference_t<typename Keyword::Type> GetDefault(Keyword keyword, Arg1&& arg1)
 {
 	throw InvalidArg("Default value does not exist.");
 }
 template <class Keyword, class Arg1,
-	bool B = std::is_convertible<Arg1, typename Keyword::_Type>::value,
-	std::enable_if_t<B, std::nullptr_t> = nullptr>
-std::remove_reference_t<typename Keyword::_Type> GetDefault(Keyword keyword, Arg1&& arg1)
+	std::enable_if_t<std::is_constructible<typename Keyword::Type, Arg1>::value, std::nullptr_t> = nullptr>
+	std::remove_reference_t<typename Keyword::Type> GetDefault(Keyword keyword, Arg1&& arg1)
 {
 	return std::forward<Arg1>(arg1);
 }
 template <class Keyword, class Arg1, class ...Args,
-		  bool B = (sizeof...(Args) != 0),
-		  std::enable_if_t<B, std::nullptr_t> = nullptr>
-std::remove_reference_t<typename Keyword::_Type> GetDefault(Keyword keyword, Arg1&&, Args&& ...args)
+	bool B = (sizeof...(Args) != 0),
+	std::enable_if_t<B, std::nullptr_t> = nullptr>
+	std::remove_reference_t<typename Keyword::Type> GetDefault(Keyword keyword, Arg1&&, Args&& ...args)
 {
 	return GetDefault(std::forward<Keyword>(keyword), std::forward<Args>(args)...);
 }
-
-template <class keyword>
-struct GetKeywordArgInfo
+template <class Keyword>
+std::remove_reference_t<typename Keyword::Type> GetDefault(Keyword keyword)
 {
-	//using Name = void;
-	using Value = void;
-	using Arg = void;
-};
-template <class Name_, class Tag_>
-struct GetKeywordArgInfo<KeywordName<Name_, void, Tag_>>
-{
-	//using Name = KeywordName<Name_, void>;
-	using Value = void;
-	using Arg = KeywordName<Name_, void, Tag_>;
-};
-template <class Name_, class Type_, class Tag_>
-struct GetKeywordArgInfo<KeywordName<Name_, Type_, Tag_>>
-{
-	//using Name = KeywordName<Name_, Type_>;
-	using Value = typename KeywordName<Name_, Type_, Tag_>::_Value;
-	using Arg = Value;
-};
+	throw InvalidArg("Default value does not exist.");
+}
 
 template <std::size_t KeyIndex>
 struct GetKeywordArg_impl
 {
 	//キーワード引数が与えられている場合。
 	template <class Keyword, class ...Args>
-	static typename Keyword::_Type f(Keyword, Args&& ...args)
+	static typename Keyword::Type f(Keyword, Args&& ...args)
 	{
 		return std::get<KeyIndex>(std::forward_as_tuple(std::forward<Args>(args)...)).Get();
 	}
@@ -114,7 +125,7 @@ struct GetKeywordArg_impl<std::numeric_limits<std::size_t>::max()>
 	//デフォルト値が引数の最後に与えられている場合はそれを返し、
 	//なければstatic_assertでコンパイルエラーにする。
 	template <class Keyword, class ...Args>
-	static std::remove_reference_t<typename Keyword::_Type> f(Keyword k, Args&& ...args)
+	static std::remove_reference_t<typename Keyword::Type> f(Keyword k, Args&& ...args)
 	{
 		return detail::GetDefault(k, std::forward<Args>(args)...);
 	}
@@ -145,15 +156,15 @@ struct AreAllKeywords<>
 };
 
 #define CUF_DEFINE_KEYWORD_OPTION(NAME)\
-constexpr auto NAME = adapt::detail::KeywordName<struct _##NAME, void, void>();
+constexpr auto NAME = adapt::detail::KeywordName<struct _##NAME, bool, void>();
 
-#define CUF_DEFINE_KEYWORD_OPTION_WITH_TAG(NAME, TAG)\
-constexpr auto NAME = adapt::detail::KeywordName<struct _##NAME, void, TAG>();
+#define CUF_DEFINE_TAGGED_KEYWORD_OPTION(NAME, TAG)\
+constexpr auto NAME = adapt::detail::KeywordName<struct _##NAME, bool, TAG>();
 
-#define CUF_DEFINE_KEYWORD_OPTIONAL_ARG(NAME, TYPE)\
+#define CUF_DEFINE_KEYWORD_OPTION_WITH_VALUE(NAME, TYPE)\
 constexpr auto NAME = adapt::detail::KeywordName<struct _##NAME, TYPE, void>();
 
-#define CUF_DEFINE_KEYWORD_OPTIONAL_ARG_WITH_TAG(NAME, TYPE, TAG)\
+#define CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(NAME, TYPE, TAG)\
 constexpr auto NAME = adapt::detail::KeywordName<struct _##NAME, TYPE, TAG>();
 
 namespace detail
@@ -167,7 +178,44 @@ struct IsTaggedWith
 template <class Option, class Tag>
 struct IsTaggedWith<Option, Tag, true>
 {
-	static constexpr bool value = std::is_base_of<typename Option::_Tag, Tag>::value;
+	static constexpr bool value = std::is_base_of<typename Option::Tag, Tag>::value;
+};
+
+template <class Keyword, class Arg>
+struct IsSameName
+{
+	static constexpr bool value = false;
+};
+template <class Keyword, class Name, class Type, class Tag>
+struct IsSameName<Keyword, KeywordName<Name, Type, Tag>>
+{
+	static constexpr bool value = std::is_same<typename Keyword::Name, Name>::value;
+};
+template <class Keyword, class Name, class Type, class Tag>
+struct IsSameName<Keyword, KeywordValue<Name, Type, Tag>>
+{
+	static constexpr bool value = std::is_same<typename Keyword::Name, Name>::value;
+};
+
+template <std::size_t N, class Keyword, class ...Args>
+struct FindKeyword_impl;
+template <std::size_t N, class Keyword>
+struct FindKeyword_impl<N, Keyword>
+{
+	static constexpr std::size_t Index = std::numeric_limits<std::size_t>::max();
+};
+template <std::size_t N, class Keyword, class Arg, class ...Args>
+struct FindKeyword_impl<N, Keyword, Arg, Args...>
+{
+	static constexpr std::size_t Index =
+		IsSameName<Keyword, Arg>::value ? N : FindKeyword_impl<N + 1, Keyword, Args...>::Index;
+};
+
+template <class Keyword, class ...Args>
+struct FindKeyword
+{
+	static constexpr std::size_t Index = FindKeyword_impl<0, Keyword, Args...>::Index;
+	static constexpr bool value = Index != std::numeric_limits<std::size_t>::max();
 };
 
 }
@@ -180,44 +228,46 @@ std::enable_if_t<CUF_TAG_IS_BASE_OF_ARGTAG, std::nullptr_t> = nullptr
 template <class Keyword, class ...Args>
 constexpr bool KeywordExists(Keyword, Args&& ...args)
 {
-	return Find<typename detail::GetKeywordArgInfo<Keyword>::Arg, RemoveCVRefT<Args>...>::value;
+	return detail::FindKeyword<Keyword, RemoveCVRefT<Args>...>::value;
 }
 template <class Keyword, class ...Args>
 constexpr bool KeywordExists(Keyword, std::tuple<Args...> args)
 {
-	return Find<typename detail::GetKeywordArgInfo<Keyword>::Arg, RemoveCVRefT<Args>...>::value;
+	return detail::FindKeyword<Keyword, RemoveCVRefT<Args>...>::value;
 }
 
 template <class Keyword, class ...Args>
-typename decltype(auto) GetKeywordArg(Keyword k, Args&& ...args)
+decltype(auto) GetKeywordArg(Keyword k, Args&& ...args)
 {
 	//キーワード引数が与えられている場合に呼ばれる。
 	//該当するキーワードから値を取り出して返す。
 	//同じキーワードが複数与えられている場合、先のもの（左にあるもの）が優先される。
 	return detail::GetKeywordArg_impl<
-		Find<typename detail::GetKeywordArgInfo<Keyword>::Value, RemoveCVRefT<Args>...>::Index>::
+		detail::FindKeyword<Keyword, RemoveCVRefT<Args>...>::Index>::
 		f(k, std::forward<Args>(args)...);
 }
 template <class Keyword, class ...Args>
-typename decltype(auto) GetKeywordArg(Keyword k, std::tuple<Args...> args)
+decltype(auto) GetKeywordArg(Keyword k, std::tuple<Args...> args)
 {
 	//キーワード引数が与えられている場合に呼ばれる。
 	//該当するキーワードから値を取り出して返す。
 	//同じキーワードが複数与えられている場合、先のもの（左にあるもの）が優先される。
 	return Apply(detail::GetKeywordArg_impl<
-		Find<typename detail::GetKeywordArgInfo<Keyword>::Value, RemoveCVRefT<Args>...>::Index>::
+				 detail::FindKeyword<Keyword, RemoveCVRefT<Args>...>::Index>::
 				 f, std::tuple_cat(std::make_tuple(k), std::forward<std::tuple<Args...>>(args)));
 }
 template <class Keyword, class ...Args, class DEFAULT>
-typename decltype(auto) GetKeywordArg(Keyword k, std::tuple<Args...> args, DEFAULT&& def)
+decltype(auto) GetKeywordArg(Keyword k, std::tuple<Args...> args, DEFAULT&& def)
 {
 	//キーワード引数が与えられている場合に呼ばれる。
 	//該当するキーワードから値を取り出して返す。
 	//同じキーワードが複数与えられている場合、先のもの（左にあるもの）が優先される。
 	return Apply(detail::GetKeywordArg_impl<
-				 Find<typename detail::GetKeywordArgInfo<Keyword>::Value, RemoveCVRefT<Args>...>::Index>::
+				 detail::FindKeyword<Keyword, RemoveCVRefT<Args>...>::Index>::
 				 f, std::tuple_cat(std::make_tuple(k), std::forward<std::tuple<Args...>>(args),
 								   std::forward_as_tuple<DEFAULT>(def)));
+}
+
 }
 
 }

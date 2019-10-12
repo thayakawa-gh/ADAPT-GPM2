@@ -14,53 +14,67 @@
 namespace adapt
 {
 
-class Exception
+inline namespace cuf
+{
+
+#ifdef _MSC_VER
+class Exception : public std::exception
 {
 public:
-	Exception(const std::string& message) : mMessage(message) {}
-	Exception(std::string&& message) : mMessage(std::move(message)) {}
+	Exception(int e) noexcept : std::exception(ToHexString(e).c_str()) {}
+	Exception(const char* c) noexcept : std::exception(c) {}
+	Exception(const std::string& message)  noexcept : std::exception(message.c_str()) {}
+	Exception(std::string&& message)  noexcept : std::exception(std::move(message).c_str()) {}
 	virtual ~Exception() = default;
 
-	virtual void What() const { std::cerr << "EXCEPTION : " << mMessage << std::endl; }
-	const std::string& GetErrorMessage() const { return mMessage; }
+	virtual std::string GetErrorMessage() const { return what(); }
+};
+#else
+class Exception : public std::exception
+{
+public:
+	Exception(int e)  noexcept : mMessage(ToHexString(e)) {}
+	Exception(const char* c) noexcept : mMessage(c) {}
+	Exception(const std::string& message) noexcept : mMessage(message) {}
+	Exception(std::string&& message) noexcept : mMessage(std::move(message)) {}
+	virtual ~Exception() = default;
+
+	virtual const char* what() const { return mMessage.c_str(); }
+	std::string GetErrorMessage() const { return mMessage; }
 
 protected:
 	std::string mMessage;
 };
+#endif
+
 
 class OutOfRange : public Exception
 {
 public:
-	OutOfRange(int e) : Exception(ToHexString(e)) {}
-	OutOfRange(const std::string& m) : Exception(m) {}
-	OutOfRange(std::string&& m) : Exception(std::move(m)) {}
-	void What() const { std::cerr << "OUT OF RANGE : " << mMessage << std::endl; }
+	using Exception::Exception;
+	virtual std::string GetErrorMessage() const { return std::string("OUT OF RANGE : ") + what(); }
 };
 
 class InvalidArg : public Exception
 {
 public:
-	InvalidArg(int e) : Exception(ToHexString(e)) {}
-	InvalidArg(const std::string& m) : Exception(m) {}
-	InvalidArg(std::string&& m) : Exception(std::move(m)) {}
-	void What() const { std::cerr << "INVALID ARG : " << mMessage << std::endl; }
+	using Exception::Exception;
+	virtual std::string GetErrorMessage() const override { return std::string("INVALID ARG : ") + what(); }
 };
 class InvalidType : public Exception
 {
 public:
-	InvalidType(int e) : Exception(ToHexString(e)) {}
-	InvalidType(const std::string& m) : Exception(m) {}
-	InvalidType(std::string&& m) : Exception(std::move(m)) {}
-	void What() const { std::cerr << "INVALID TYPE : " << mMessage << std::endl; }
+	using Exception::Exception;
+	virtual std::string GetErrorMessage() const override { return std::string("INVALID TYPE : ") + what(); }
 };
 class InvalidValue : public Exception
 {
 public:
-	InvalidValue(int e) : Exception(ToHexString(e)) {}
-	InvalidValue(const std::string& m) : Exception(m) {}
-	InvalidValue(std::string&& m) : Exception(std::move(m)) {}
-	void What() const { std::cerr << "INVALID VALUE : " << mMessage << std::endl; }
+	using Exception::Exception;
+	virtual std::string GetErrorMessage() const override { return std::string("INVALID VALUE : ") + what(); }
 };
+
+}
 
 }
 

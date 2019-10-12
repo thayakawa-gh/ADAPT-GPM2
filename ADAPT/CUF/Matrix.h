@@ -15,6 +15,9 @@
 namespace adapt
 {
 
+inline namespace cuf
+{
+
 template <class T, int Dim = 2>
 class Matrix
 {
@@ -159,10 +162,20 @@ public:
 		return mMatrixData[i];
 	}
 
+	//[0][0], [0][1], [0][2], ...みたいな順に走査する。はず。
+	T* begin() { return mMatrixData.get(); }
+	const T* begin() const { return mMatrixData.get(); }
+	const T* cbegin() const { return begin(); }
+	T* end() { return mMatrixData.get() + std::accumulate(mSize.begin(), mSize.end(), 1, std::multiplies<int>()); }
+	const T* end() const { return mMatrixData.get() + std::accumulate(mSize.begin(), mSize.end(), 1, std::multiplies<int>()); }
+	const T* cend() const { return end(); }
+
 private:
 	std::array<uint32_t, Dim> mSize;
 	std::unique_ptr<T[]> mMatrixData;
 };
+
+}
 
 }
 

@@ -18,6 +18,9 @@
 namespace adapt
 {
 
+inline namespace cuf
+{
+
 //string中のfrom文字をto文字へと置き換える関数。
 inline std::string ReplaceStr(const std::string& str, const std::string& from, const std::string& to)
 {
@@ -216,6 +219,7 @@ return _pclose(stream); \
 }
 #endif
 
+
 namespace detail
 {
 
@@ -262,7 +266,7 @@ class BundledIteratorWithIndex
 	: public BundledIterator<Iterators...>
 {
 public:
-	BundledIteratorWithIndex(std::size_t index, Iterators... cs) : BundledIterator<Iterators...>(cs...), mIndex(index) {}
+	BundledIteratorWithIndex(Iterators... cs) : BundledIterator<Iterators...>(cs...), mIndex(0) {}
 
 	BundledIteratorWithIndex& operator++()
 	{
@@ -279,19 +283,21 @@ private:
 	std::size_t mIndex;
 };
 
+
+namespace detail
+{
+
 template <class ...Iterators>
 BundledIterator<Iterators...> MakeBundledIterator(Iterators ...it)
 {
 	return BundledIterator<Iterators...>(it...);
 }
 template <class ...Iterators>
-BundledIteratorWithIndex<Iterators...> MakeBundledIteratorWithIndex(std::size_t index, Iterators ...it)
+BundledIteratorWithIndex<Iterators...> MakeBundledIteratorWithIndex(Iterators ...it)
 {
-	return BundledIteratorWithIndex<Iterators...>(index, it...);
+	return BundledIteratorWithIndex<Iterators...>(it...);
 }
 
-namespace detail
-{
 
 template <class Iterators, class IndexSequence>
 class BundledRange_impl;
@@ -300,8 +306,9 @@ class BundledRange_impl<std::tuple<Containers...>, std::index_sequence<Indices..
 {
 public:
 
-	BundledRange_impl(Containers&... c)
-		: mContainers(c...) {}
+	template <class ...C>
+	BundledRange_impl(C&&... c)
+		: mContainers(std::forward<C>(c)...) {}
 
 	auto begin() const
 	{
@@ -313,7 +320,7 @@ public:
 	}
 
 private:
-	std::tuple<Containers&...> mContainers;
+	std::tuple<Containers&&...> mContainers;
 };
 
 }
@@ -331,20 +338,21 @@ class BundledRangeWithIndex_impl<std::tuple<Containers...>, std::index_sequence<
 {
 public:
 
-	BundledRangeWithIndex_impl(Containers&... c)
-		: mContainers(c...) {}
+	template <class ...C>
+	BundledRangeWithIndex_impl(C&&... c)
+		: mContainers(std::forward<C>(c)...) {}
 
 	auto begin() const
 	{
-		return MakeBundledIteratorWithIndex(0, std::get<Indices>(mContainers).begin()...);
+		return MakeBundledIteratorWithIndex(std::get<Indices>(mContainers).begin()...);
 	}
 	auto end() const
 	{
-		return MakeBundledIteratorWithIndex(std::get<0>(mContainers).size(), std::get<Indices>(mContainers).end()...);
+		return MakeBundledIteratorWithIndex(std::get<Indices>(mContainers).end()...);
 	}
 
 private:
-	std::tuple<Containers&...> mContainers;
+	std::tuple<Containers&&...> mContainers;
 };
 
 }
@@ -353,15 +361,107 @@ template <class ...Containers>
 using BundledRangeWithIndex = detail::BundledRangeWithIndex_impl<std::tuple<Containers...>, std::make_index_sequence<sizeof...(Containers)>>;
 
 template <class ...Containers>
-BundledRange<Containers...> MakeBundledRange(Containers& ...cs)
+BundledRange<Containers...> BundleRange(Containers&& ...cs)
 {
-	return BundledRange<Containers...>(cs...);
+	return BundledRange<Containers...>(std::forward<Containers>(cs)...);
 }
 
 template <class ...Containers>
-BundledRangeWithIndex<Containers...> MakeBundledRangeWithIndex(Containers& ...cs)
+BundledRangeWithIndex<Containers&&...> BundleRangeWithIndex(Containers&& ...cs)
 {
-	return BundledRangeWithIndex<Containers...>(cs...);
+	return BundledRangeWithIndex<Containers&&...>(std::forward<Containers&&>(cs)...);
+}
+
+namespace detail
+{
+
+template <class T, std::size_t N>
+class ReferenceArray
+{
+public:
+
+	template <class ...Args>
+	ReferenceArray(Args&& ...args) : mPtrArray{ &std::forward<Args>(args)... } {}
+
+	class Iterator
+	{
+	public:
+		Iterator(typename std::array<std::add_pointer_t<T>, N>::iterator i) : mIterator(i) {}
+
+		Iterator& operator++()
+		{
+			++mIterator;
+			return *this;
+		}
+		T& operator*() const noexcept
+		{
+			return *(*mIterator);
+		}
+		/*const T& operator*() const noexcept
+		{
+			return **mIterator;
+		}*/
+		bool operator==(const Iterator& it2) const
+		{
+			return mIterator == it2.mIterator;
+		}
+		bool operator!=(const Iterator& it2) const
+		{
+			return !(*this == it2);
+		}
+
+	private:
+		typename std::array<std::add_pointer_t<T>, N>::iterator mIterator;
+	};
+
+	constexpr std::size_t size() const { return N; }
+	Iterator begin()
+	{
+		return Iterator(mPtrArray.begin());
+	}
+	Iterator end()
+	{
+		return Iterator(mPtrArray.end());
+	}
+
+private:
+
+	std::array<std::add_pointer_t<T>, N> mPtrArray;
+};
+
+}
+
+template <class ...Args>
+detail::ReferenceArray<typename CommonType<Args...>::Type, sizeof...(Args)> HoldRefArray(Args& ...args)
+{
+	return detail::ReferenceArray<typename CommonType<Args...>::Type, sizeof...(Args)>{ args... };
+}
+
+
+namespace detail
+{
+
+template <class ...Ts> struct OverloadedLambda;
+template <class T, class ...Ts> struct OverloadedLambda<T, Ts...>
+	: public T, OverloadedLambda<Ts...>
+{
+	OverloadedLambda(T t, Ts ...ts)
+		: T(t), OverloadedLambda<Ts...>(ts...) {}
+	using T::operator();
+	using OverloadedLambda<Ts...>::operator();
+};
+template <class T> struct OverloadedLambda<T>
+	: public T
+{
+	OverloadedLambda(T t)
+		: T(t) {}
+	using T::operator();
+};
+
+}
+
+template <class ...T> detail::OverloadedLambda<T...> Overload(T ...t) { return detail::OverloadedLambda<T...>{ t... }; }
+
 }
 
 }

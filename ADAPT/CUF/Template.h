@@ -14,28 +14,31 @@
 namespace adapt
 {
 
+inline namespace cuf
+{
+
 //累乗計算クラス。ハッシュ化とか必要に応じて使おう。でもできればconstexpr欲しい。
 template <int base, int power>
 struct TPower
 {
 	static_assert(power >= 0, "power must be equal or larger than 0");
-	static const int value = TPower<base, power - 1>::value * base;
+	static constexpr int value = TPower<base, power - 1>::value * base;
 };
 template <int base>
 struct TPower<base, 0>
 {
-	static const int value = 1;
+	static constexpr int value = 1;
 };
 
 template <int N, int ...Ns>
 struct IntSum
 {
-	static const int value = N + IntSum<Ns...>::value;
+	static constexpr int value = N + IntSum<Ns...>::value;
 };
 template <int N>
 struct IntSum<N>
 {
-	static const int value = N;
+	static constexpr int value = N;
 };
 
 //C++20のstd::type_identityの代用。
@@ -54,18 +57,18 @@ private:
 	typedef char  Yes;
 	typedef struct { char c[2]; } No;
 
-	static const Yes check(const Base&);
-	static const No  check(...);
+	static constexpr Yes check(const Base&);
+	static constexpr No  check(...);
 
 	static const Derived& d;
 public:
-	static const bool value = sizeof(check(d)) == sizeof(Yes);
+	static constexpr bool value = sizeof(check(d)) == sizeof(Yes);
 };
 template <class Base>
 class IsBasedOn<void, Base>
 {
 public:
-	static const bool value = false;
+	static constexpr bool value = false;
 };
 //Base<T...>をTに依らず継承しているか否かを判定する汎用的なクラスを書くことは出来ないのだろうか。
 //あった！あったぞ！できたぞ！すげぇ！テンプレート便利すぎだろこん畜生！
@@ -78,18 +81,18 @@ private:
 	typedef struct { char c[2]; } No;
 
 	template <class ...U>
-	static const Yes check(const Base<U...>&);
-	static const No  check(...);
+	static constexpr Yes check(const Base<U...>&);
+	static constexpr No  check(...);
 
 	static const Derived& d;
 public:
-	static const bool value = sizeof(check(d)) == sizeof(Yes);
+	static constexpr bool value = sizeof(check(d)) == sizeof(Yes);
 };
 template <template <class ...> class Base>
 class IsBasedOn_T<void, Base>
 {
 public:
-	static const bool value = false;
+	static constexpr bool value = false;
 };
 template <class Derived, template <int, class...> class Base>
 class IsBasedOn_NT
@@ -99,23 +102,23 @@ private:
 	typedef struct { char c[2]; } No;
 
 	template <int N>
-	static const Yes check(const Base<N>&);
+	static constexpr Yes check(const Base<N>&);
 	//本来はこちらの形式が正しいのだが、
 	//Visual Studioのバグか、コンパイル時に"パラメータ展開できねぇよ"と文句を言われる。
 	//テンプレート周りがゴミカスなVS2015なので仕方ない。
 	//template <int N, class ...U>
 	//static const Yes check(const Base<N, U...>&);
-	static const No  check(...);
+	static constexpr No  check(...);
 
 	static const Derived& d;
 public:
-	static const bool value = sizeof(check(d)) == sizeof(Yes);
+	static constexpr bool value = sizeof(check(d)) == sizeof(Yes);
 };
 template <template <int, class ...> class Base>
 class IsBasedOn_NT<void, Base>
 {
 public:
-	static const bool value = false;
+	static constexpr bool value = false;
 };
 template <class Derived, template <int, std::size_t, class...> class Base>
 class IsBasedOn_NNT
@@ -125,12 +128,12 @@ private:
 	typedef struct { char c[2]; } No;
 
 	template <int N, int M, class ...U>
-	static const Yes check(const Base<N, M, U...>&);
-	static const No  check(...);
+	static constexpr Yes check(const Base<N, M, U...>&);
+	static constexpr No  check(...);
 
 	static const Derived& d;
 public:
-	static const bool value = sizeof(check(d)) == sizeof(Yes);
+	static constexpr bool value = sizeof(check(d)) == sizeof(Yes);
 };
 
 //template <...> class T : public Base<0, ...>の形で可変長引数テンプレートのメンバを持つクラスに対し、
@@ -147,40 +150,43 @@ inline const Vessel<N, Members...>& CastToNth(const Vessel<N, Members...>& v)
 }
 
 template <int N>
-struct Numberer
+struct Number
 {
-	static const int value = N;
-	//static constexpr Numberer<N + n> operator+(constexpr int n);
-	//static constexpr Numberer<N - n> operator-(constexpr int n);
+	static constexpr int value = N;
+	//static constexpr Number<N + n> operator+(constexpr int n);
+	//static constexpr Number<N - n> operator-(constexpr int n);
 };
+
+template <class ...>
+using VoidT = void;
 
 //FlexibleSwitchと似ているが、こちらはループするためのもの。
 //0からRoopNum-1までループするfor文のような振る舞いをする。
 //Functorの戻り値は無視されるので注意。
 
-template <int RoopNum, int N, template <int CastN> class Functor, bool Continue = (RoopNum > N)>
-struct _StaticRoop;
-template <int RoopNum, int N, template <int CastN> class Functor, bool Continue>
-struct _StaticRoop
+template <std::size_t RoopNum, std::size_t N, template <std::size_t CastN> class Functor, bool Continue = (RoopNum > N)>
+struct StaticRoop_impl;
+template <std::size_t RoopNum, std::size_t N, template <std::size_t CastN> class Functor, bool Continue>
+struct StaticRoop_impl
 {
 	template <class ...Args>
 	inline static void apply(Args&& ...args)
 	{
 		Functor<N>::apply(args...);
-		_StaticRoop<RoopNum, N + 1, Functor>::apply(std::forward<Args>(args)...);
+		StaticRoop_impl<RoopNum, N + 1, Functor>::apply(std::forward<Args>(args)...);
 	}
 };
-template <int RoopNum, int N, template <int CastN> class Functor>
-struct _StaticRoop<RoopNum, N, Functor, false>
+template <std::size_t RoopNum, std::size_t N, template <std::size_t CastN> class Functor>
+struct StaticRoop_impl<RoopNum, N, Functor, false>
 {
 	template <class ...Args>
 	inline static void apply(Args&& ...args)
 	{}
 };
-template <int RoopNum, template <int CastN> class Functor, class ...Args>
+template <std::size_t RoopNum, template <std::size_t CastN> class Functor, class ...Args>
 inline void StaticRoop(Args&& ...args)
 {
-	_StaticRoop<RoopNum, 0, Functor>::apply(std::forward<Args>(args)...);
+	StaticRoop_impl<RoopNum, 0, Functor>::apply(std::forward<Args>(args)...);
 };
 
 //FlexibleSwitchは再帰処理で非効率なので、関数ポインタテーブル版を新たに作りたい。
@@ -199,7 +205,7 @@ struct HasMemFunc_##MemFunc \
 	static auto check(U&) ->decltype(std::declval<U&>().MemFunc(), std::true_type()); \
 	static auto check(...)->decltype(std::false_type()); \
 	typedef decltype(check(std::declval<T&>())) type; \
-	static const bool value = type::value; \
+	static constexpr bool value = type::value; \
 };
 
 template <class T>
@@ -209,7 +215,7 @@ struct IsFunctor
 	static auto check(U&) -> decltype(&U::operator(), std::true_type());
 	static auto check(...) -> decltype(std::false_type());
 	typedef decltype(check(std::declval<T&>())) type;
-	static const bool value = type::value;
+	static constexpr bool value = type::value;
 };
 
 template <std::size_t N, class Type, class ...Args>
@@ -217,78 +223,32 @@ struct Find_impl;
 template <std::size_t N, class Type, class ArgHead, class ...Args>
 struct Find_impl<N, Type, ArgHead, Args...>
 {
-	static const std::size_t Index = Find_impl<N + 1, Type, Args...>::Index;
-	static const bool value = Find_impl<N + 1, Type, Args...>::value;
+	static constexpr std::size_t Index = Find_impl<N + 1, Type, Args...>::Index;
+	static constexpr bool value = Find_impl<N + 1, Type, Args...>::value;
 };
 template <std::size_t N, class Type, class ...Args>
 struct Find_impl<N, Type, Type, Args...>
 {
-	static const std::size_t Index = N;
-	static const bool value = true;
+	static constexpr std::size_t Index = N;
+	static constexpr bool value = true;
 };
 template <std::size_t N, class Type>
 struct Find_impl<N, Type>
 {
-	static const std::size_t Index = std::numeric_limits<std::size_t>::max();
-	static const bool value = false;
+	static constexpr std::size_t Index = std::numeric_limits<std::size_t>::max();
+	static constexpr bool value = false;
 };
 template <class Type, class ...Args>
 struct Find : public Find_impl<0, Type, Args...>
 {};
 
-//int型テンプレート引数を一つだけ持つようなクラスを可変長引数テンプレートに与えたいときに、
-//それを一つに纏めるために使う。
-//ぶっちゃけInterpreterとTraverser専用。それ以外の使い道なんざねぇよ。
-template <template <int, class ...> class ...T>
-struct UnindexedList
-{
-public:
-	static const std::size_t Size = sizeof...(T);
-};
-template <template <int, int, class ...> class ...T>
-struct UnindexedList2
-{
-public:
-	static const std::size_t Size = sizeof...(T);
-};
-//インデックス持たない版。
-template <template <class...> class ...T>
-struct UnarguedList
-{
-public:
-	static const std::size_t Size = sizeof...(T);
-};
-//単なる型の羅列。
-template <class ...T>
-struct TypeList
-{
-	static const std::size_t Size = sizeof...(T);
-};
-template <class T1, class T2>
-struct CatTypeList;
-template <class T1, class ...T2>
-struct CatTypeList<T1, TypeList<T2...>>
-{
-	using Type = TypeList<T1, T2...>;
-};
-template <class ...T1, class T2>
-struct CatTypeList<TypeList<T1...>, T2>
-{
-	using Type = TypeList<T1..., T2>;
-};
-template <class ...T1, class ...T2>
-struct CatTypeList<TypeList<T1...>, TypeList<T2...>>
-{
-	using Type = TypeList<T1..., T2...>;
-};
-
 //可変長引数テンプレートから、0から数えてN番目の要素の型を取り出す。GetType<N, elements...>::Typeで用いる。
-template <int N, class ...Types>
+template <size_t N, class ...Types>
 class GetType;
-template <int N, class TypeHead, class ...TypeBody>
+template <size_t N, class TypeHead, class ...TypeBody>
 class GetType<N, TypeHead, TypeBody...> : public GetType<N - 1, TypeBody...>
 {};
-template <int N>
+template <size_t N>
 class GetType<N>
 {
 public:
@@ -306,7 +266,9 @@ class GetType<-1, TypeBody...>
 public:
 	using Type = void;
 };
-template <int N, class TypeHead, class ...TypeBody>
+template <class ...T>
+struct TypeList;
+template <size_t N, class TypeHead, class ...TypeBody>
 class GetType<N, TypeList<TypeHead, TypeBody...>> : public GetType<N - 1, TypeList<TypeBody...>>
 {};
 template <class TypeHead, class ...TypeBody>
@@ -321,12 +283,113 @@ class GetType<-1, TypeList<TypeBody...>>
 public:
 	using Type = void;
 };
-template <int N>
+template <size_t N>
 class GetType<N, TypeList<>>
 {
 public:
 	using Type = void;
 };
+
+template <size_t Index, template <size_t, class...> class ...T>
+struct GetType_NT;
+template <size_t Index, template <size_t, class...> class THead, template <size_t, class...> class ...T>
+struct GetType_NT<Index, THead, T...> : public GetType_NT<Index - 1, T...>
+{};
+template <size_t Index>
+struct GetType_NT<Index>
+{};
+template <template <size_t, class...> class THead, template <size_t, class...> class ...T>
+struct GetType_NT<0, THead, T...>
+{
+	template <size_t N, class ...U>
+	using Type = THead<N, U...>;
+};
+
+template <size_t Index, template <class...> class ...T>
+struct GetType_T;
+template <size_t Index, template <class...> class THead, template <class...> class ...T>
+struct GetType_T<Index, THead, T...> : public GetType_T<Index - 1, T...>
+{};
+template <size_t Index>
+struct GetType_T<Index>
+{};
+template <template <class...> class THead, template <class...> class ...T>
+struct GetType_T<0, THead, T...>
+{
+	template <class ...U>
+	using Type = THead<U...>;
+	template <class U>
+	using Type1 = THead<U>;
+	template <class U1, class U2>
+	using Type2 = THead<U1, U2>;
+	template <class U1, class U2, class U3>
+	using Type3 = THead<U1, U2, U3>;
+};
+
+//int型テンプレート引数を一つだけ持つようなクラスを可変長引数テンプレートに与えたいときに、
+//それを一つに纏めるために使う。
+//ぶっちゃけInterpreterとTraverser専用。それ以外の使い道なんざねぇよ。
+template <template <size_t, class ...> class ...T>
+struct UnindexedList
+{
+	static constexpr std::size_t Size = sizeof...(T);
+
+};
+template <class ...List>
+struct CatUnindexedList;
+template <template <size_t, class...> class ...List1>
+struct CatUnindexedList<UnindexedList<List1...>>
+{
+	using Type = UnindexedList<List1...>;
+};
+template <template <size_t, class...> class ...List1, template <size_t, class...> class ...List2>
+struct CatUnindexedList<UnindexedList<List1...>, UnindexedList<List2...>>
+{
+	using Type = UnindexedList<List1..., List2...>;
+};
+template <class List1, class List2, class List3, class ...Lists>
+struct CatUnindexedList<List1, List2, List3, Lists...>
+{
+	using Type = CatUnindexedList<CatUnindexedList<List1, List2>, List3, Lists...>;
+};
+
+template <template <size_t, size_t, class ...> class ...T>
+struct UnindexedList2
+{
+public:
+	static constexpr std::size_t Size = sizeof...(T);
+};
+//インデックス持たない版。
+template <template <class...> class ...T>
+struct UnarguedList
+{
+public:
+	static constexpr std::size_t Size = sizeof...(T);
+};
+//単なる型の羅列。
+template <class ...T>
+struct TypeList
+{
+	static constexpr std::size_t Size = sizeof...(T);
+};
+template <class ...T>
+struct CatTypeList;
+template <class ...T1>
+struct CatTypeList<TypeList<T1...>>
+{
+	using Type = TypeList<T1...>;
+};
+template <class ...T1, class ...T2>
+struct CatTypeList<TypeList<T1...>, TypeList<T2...>>
+{
+	using Type = TypeList<T1..., T2...>;
+};
+template <class T1, class T2, class T3, class ...Ts>
+struct CatTypeList<T1, T2, T3, Ts...>
+	: public CatTypeList<typename CatTypeList<T1, T2>::Type, T3, Ts...>
+{};
+template <class ...T>
+using CatTypeListT = typename CatTypeList<T...>::Type;
 
 template <int N, class ...Args>
 using GetTypeT = typename GetType<N, Args...>::Type;
@@ -365,6 +428,38 @@ public:
 template <class Type_>
 using GetInnerTypeT = typename GetInnerType<Type_>::Type;
 
+namespace detail
+{
+
+template <class ...Ts>
+struct CommonType_impl;
+template <class CommonT>
+struct CommonType_impl<CommonT, CommonT>
+{
+	using Type = CommonT;
+	static constexpr bool value = true;
+};
+template <class CommonT, class T, class ...Ts>
+struct CommonType_impl<CommonT, T, Ts...>
+{
+	static constexpr bool value = false;
+};
+template <class CommonT, class ...Ts>
+struct CommonType_impl<CommonT, CommonT, Ts...> : public CommonType_impl<CommonT, Ts...>
+{};
+
+}
+
+template <class ...T>
+struct CommonType
+{
+	using Type = typename detail::CommonType_impl<T...>::Type;
+	static constexpr bool value = detail::CommonType_impl<T...>::value;
+};
+template <class ...T>
+using CommonTypeT = typename CommonType<T...>::Type;
+
+
 //受け取った全てのbool値についてAnd演算を行う。
 //全てがtrueであった場合のみValueはtrueとなる。
 //こんな機能くらい標準ライブラリに入ってそうだけど、見つけられなかった。
@@ -373,17 +468,17 @@ struct AndOperationSeq;
 template <bool Head, bool ...Body>
 struct AndOperationSeq<Head, Body...>
 {
-	static const bool value = Head && AndOperationSeq<Body...>::value;
+	static constexpr bool value = Head && AndOperationSeq<Body...>::value;
 };
 template <bool Head>
 struct AndOperationSeq<Head>
 {
-	static const bool value = Head;
+	static constexpr bool value = Head;
 };
 template <>
 struct AndOperationSeq<>
 {
-	static const bool value = false;
+	static constexpr bool value = false;
 };
 template <bool B>
 struct AndOperationSeqEnabler_impl
@@ -398,6 +493,9 @@ struct AndOperationSeqEnabler_impl<true>
 template <bool ...BoolSequence>
 using AndOperationSeqEnablerT = typename AndOperationSeqEnabler_impl<AndOperationSeq<BoolSequence...>::value>::Type;
 
+template <bool B>
+using EnableIfT = std::enable_if_t<B, std::nullptr_t>;
+
 //VS2015は変数テンプレート未対応。糞食らえ。
 //template <bool ...V>
 //constexpr bool AndOperationSeq_v = AndOperationSeq<V...>::Value;
@@ -407,12 +505,12 @@ using AndOperationSeqEnablerT = typename AndOperationSeqEnabler_impl<AndOperatio
 template <bool Head, bool ...Body>
 struct OrOperationSeq
 {
-	static const bool value = Head || OrOperationSeq<Body...>::value;
+	static constexpr bool value = Head || OrOperationSeq<Body...>::value;
 };
 template <bool Head>
 struct OrOperationSeq<Head>
 {
-	static const bool value = Head;
+	static constexpr bool value = Head;
 };
 template <bool B>
 struct OrOperationSeqEnabler_impl
@@ -574,6 +672,8 @@ struct FunctionTraits
 	using ArgTypes = typename detail::FunctionTraits_impl<Function>::ArgTypes;
 	using RetType = typename detail::FunctionTraits_impl<Function>::RetType;
 };
+
+}
 
 }
 #endif
