@@ -8,37 +8,36 @@
 
 using namespace adapt::gpm2;
 
-struct Gaussian
+struct ChiSquare
 {
-	Gaussian(double m, double v) : mean(m), var(v) {}
+	ChiSquare(double k) : k(k) {}
 	double operator()(double x) const
 	{
-		double d = x - mean;
-		return std::exp(-(d * d) / (2 * var)) / std::sqrt(2 * 3.1415926535 * var);
+		return std::pow(x, k / 2 - 1) * std::exp(-x / 2) / (std::pow(2, k / 2) * tgamma(k / 2));
 	}
-	double mean;
-	double var;
+	double k;
 };
 
 int main()
 {
 	//GPMCanvas::SetGnuplotPath("path to gnuplot");
 
-	std::vector<double> x(600, 0);
-	std::vector<double> y1(600, 0);
-	std::vector<double> y2(600, 0);
-	std::vector<double> y3(600, 0);
-	Gaussian g1(0, 0.5);
-	Gaussian g2(0, 2.0);
-	Gaussian g3(-2, 1.0);
+	std::vector<double> x(401, 0);
+	std::vector<double> y1(401, 0);
+	std::vector<double> y2(401, 0);
+	std::vector<double> y3(401, 0);
+	ChiSquare c1(1);
+	ChiSquare c2(2);
+	ChiSquare c3(3);
 
-	for (int i = 0; i < 600; ++i)
+	for (int i = 0; i <= 400; ++i)
 	{
-		x[i] = i * 0.02 - 6.;
-		y1[i] = g1(x[i]);
-		y2[i] = g2(x[i]);
-		y3[i] = g3(x[i]);
+		x[i] = i * 0.02;
+		y1[i] = c1(x[i]);
+		y2[i] = c2(x[i]);
+		y3[i] = c3(x[i]);
 	}
+	y1[0] = 10;
 
 	/*
 	1. PlotFilledCurves(const std::vector<double>& x, const std::vector<double>& y, Options ...options)
@@ -62,11 +61,12 @@ int main()
 
 	GPMCanvas2D g("example_filledcurve.png");
 	g.SetTitle("example\\_filledcurve");
-	g.SetXRange(-4.0, 4.0);
+	g.SetXRange(0, 8.0);
+	g.SetYRange(0, 1.0);
 	g.SetXLabel("x");
 	g.SetYLabel("y");
-	g.PlotFilledCurves(x, y1, plot::title = "mu = 0, sigma^2 = 0.2", plot::fillcolor = "red", plot::filltransparent = 0.4).
-		PlotFilledCurves(x, y2, plot::title = "mu = 0, sigma^2 = 1.0", plot::fillcolor = "blue", plot::filltransparent = 0.4).
-		PlotFilledCurves(x, y3, plot::title = "mu = -2, sigma^2 = 0.7", plot::fillcolor = "green", plot::filltransparent = 0.4);
+	g.PlotFilledCurves(x, y1, plot::title = "k = 1", plot::fillcolor = "red", plot::filltransparent = 0.4).
+		PlotFilledCurves(x, y2, plot::title = "k = 2", plot::fillcolor = "blue", plot::filltransparent = 0.4).
+		PlotFilledCurves(x, y3, plot::title = "k = 3", plot::fillcolor = "green", plot::filltransparent = 0.4);
 	return 0;
 }
