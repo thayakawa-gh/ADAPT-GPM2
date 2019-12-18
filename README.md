@@ -2,7 +2,7 @@
 GPM2 is a C++ header-only library to manage Gnuplot. This is designed to draw lines, points, vectors, colormap etc. from std::vector or Matrix data points without Gnuplot's weird command "using", "with ~". Basically it does not require the knowledge of Gnuplot.
 
 In this library, plot functions can be given various options such as title, style, errorbar, variable color, etc. in the form of unordered keyword arguments.
-```
+```cpp
 GPMCanvas::SetGnuplotPath("path to gnuplot");
 
 std::vector<double> x;
@@ -21,8 +21,8 @@ g.PlotPoints(x, y, plot::variable_color = c,
   PlotPoints(x, y, plot::xerrorbar = 1.0, plot::yerrorbar = e,
             plot::style = Style::points, plot::title = "points with error bars");
 ```
-<img src="https://user-images.githubusercontent.com/53743073/62621795-c599e000-b957-11e9-9d69-f20dfaefec81.png" width="480px">
-<img src="https://user-images.githubusercontent.com/53743073/62621810-d185a200-b957-11e9-8489-740bdbac29d8.png" width="480px">
-<img src="https://user-images.githubusercontent.com/53743073/66711362-472d4480-edc5-11e9-9c45-e08c9b8d3580.png" width="480px">
+<img src="https://user-images.githubusercontent.com/53743073/71127820-23f09c80-222f-11ea-945e-a5b598390388.png" width="480px">
+<img src="https://user-images.githubusercontent.com/53743073/71127869-3e2a7a80-222f-11ea-839c-06acf20545f1.png" width="960px">
+<img src="https://user-images.githubusercontent.com/53743073/71127885-484c7900-222f-11ea-99b5-a6b093de109f.png" width="480px">
 
 GPM2 is a part of ADAPT, which is a library for statistical aggregation, analysis, processing and 2D/3D visualization with hierarchical data container, however, almost all ADAPT is available only for the members of the laboratory I belong to.
