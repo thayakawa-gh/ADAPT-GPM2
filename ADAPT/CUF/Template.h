@@ -1,4 +1,4 @@
-﻿//
+//
 // Copyright (c) 2017-2019 Hayakawa
 // Released under the 2-Clause BSD license.
 // see https://opensource.org/licenses/BSD-2-Clause
@@ -149,14 +149,6 @@ inline const Vessel<N, Members...>& CastToNth(const Vessel<N, Members...>& v)
 	return v;
 }
 
-template <int N>
-struct Number
-{
-	static constexpr int value = N;
-	//static constexpr Number<N + n> operator+(constexpr int n);
-	//static constexpr Number<N - n> operator-(constexpr int n);
-};
-
 template <class ...>
 using VoidT = void;
 
@@ -202,7 +194,7 @@ template <class T> \
 struct HasMemFunc_##MemFunc \
 { \
 	template <class U> \
-	static auto check(U&) ->decltype(std::declval<U&>().MemFunc(), std::true_type()); \
+	static auto check(U&) ->decltype(&U::MemFunc, std::true_type()); \
 	static auto check(...)->decltype(std::false_type()); \
 	typedef decltype(check(std::declval<T&>())) type; \
 	static constexpr bool value = type::value; \
@@ -218,7 +210,11 @@ struct IsFunctor
 	static constexpr bool value = type::value;
 };
 
-template <std::size_t N, class Type, class ...Args>
+template <class ...T>
+struct TypeList;
+template <template <class...> class ...T>
+struct UnarguedList;
+/*template <std::size_t N, class Type, class ...Args>
 struct Find_impl;
 template <std::size_t N, class Type, class ArgHead, class ...Args>
 struct Find_impl<N, Type, ArgHead, Args...>
@@ -241,70 +237,112 @@ struct Find_impl<N, Type>
 template <class Type, class ...Args>
 struct Find : public Find_impl<0, Type, Args...>
 {};
+template <class Type, class ...Args>
+struct Find<Type, TypeList<Args...>> : public Find<Type, Args...>
+{};*/
 
-//可変長引数テンプレートから、0から数えてN番目の要素の型を取り出す。GetType<N, elements...>::Typeで用いる。
+template <size_t N>
+struct Number
+{
+	static constexpr size_t value = N;
+};
+
+namespace detail
+{
+template <size_t Index, class Type>
+struct GetType_impl_s
+{
+	friend Type GetTypeResult(const GetType_impl_s&, std::integral_constant<size_t, Index>);
+};
+template <class, class>
+struct GetType_impl;
+template <size_t ...Indices, class ...Types>
+struct GetType_impl<std::index_sequence<Indices...>, TypeList<Types...>>
+	: public GetType_impl_s<Indices, Types>...
+{};
+}
 template <size_t N, class ...Types>
-class GetType;
-template <size_t N, class TypeHead, class ...TypeBody>
-class GetType<N, TypeHead, TypeBody...> : public GetType<N - 1, TypeBody...>
-{};
-template <size_t N>
-class GetType<N>
+struct GetType
 {
-public:
-	using Type = void;
-};
-template <class TypeHead, class ...TypeBody>
-class GetType<0, TypeHead, TypeBody...>
-{
-public:
-	using Type = TypeHead;
-};
-template <class ...TypeBody>
-class GetType<-1, TypeBody...>
-{
-public:
-	using Type = void;
-};
-template <class ...T>
-struct TypeList;
-template <size_t N, class TypeHead, class ...TypeBody>
-class GetType<N, TypeList<TypeHead, TypeBody...>> : public GetType<N - 1, TypeList<TypeBody...>>
-{};
-template <class TypeHead, class ...TypeBody>
-class GetType<0, TypeList<TypeHead, TypeBody...>>
-{
-public:
-	using Type = TypeHead;
-};
-template <class ...TypeBody>
-class GetType<-1, TypeList<TypeBody...>>
-{
-public:
-	using Type = void;
-};
-template <size_t N>
-class GetType<N, TypeList<>>
-{
-public:
-	using Type = void;
+	using Type = decltype(GetTypeResult(detail::GetType_impl<
+										std::make_index_sequence<sizeof...(Types)>,
+										TypeList<Types...>>(),
+										std::integral_constant<size_t, N>()));
 };
 
-template <size_t Index, template <size_t, class...> class ...T>
-struct GetType_NT;
-template <size_t Index, template <size_t, class...> class THead, template <size_t, class...> class ...T>
-struct GetType_NT<Index, THead, T...> : public GetType_NT<Index - 1, T...>
+template <size_t N, class ...Types>
+struct GetType<N, TypeList<Types...>>
+	: public GetType<N, Types...>
 {};
-template <size_t Index>
-struct GetType_NT<Index>
-{};
-template <template <size_t, class...> class THead, template <size_t, class...> class ...T>
-struct GetType_NT<0, THead, T...>
+
+namespace detail
 {
-	template <size_t N, class ...U>
-	using Type = THead<N, U...>;
+template <size_t Index, class Type>
+struct FindType_impl_s
+{
+	friend std::integral_constant<size_t, Index> FindResult(const FindType_impl_s&, Identity<Type>);
+};
+template <class, class>
+struct FindType_impl;
+template <size_t ...Indices, class ...Types>
+struct FindType_impl<std::index_sequence<Indices...>, TypeList<Types...>>
+	: public FindType_impl_s<Indices, Types>...
+{};
+}
+template <class Type, class ...Types>
+struct FindType
+{
+private:
+	using Impl = detail::FindType_impl<std::make_index_sequence<sizeof...(Types)>, TypeList<Types...>>;
+	struct Exist
+	{
+		template <class T = Type>
+		static constexpr auto Check(int) -> decltype(FindResult(Impl(), Identity<T>()), bool()) { return true; }
+		static constexpr auto Check(...) -> bool { return false; }
+		template <class T = Type>
+		static constexpr auto GetIndex(int) -> decltype(FindResult(Impl(), Identity<T>()), size_t())
+		{
+			using IC = decltype(FindResult(Impl(), Identity<Type>()));
+			return IC::value;
+		}
+		static constexpr auto GetIndex(...) -> size_t { return std::numeric_limits<size_t>::max(); }
+		static constexpr bool value = Check(0);
+		static constexpr size_t Index = GetIndex(0);
+	};
+public:
+
+	static constexpr size_t Index = Exist::Index;
+	static constexpr size_t value = Exist::value;
 };
 
+#if _MSC_VER <= 1900
+//msvc2015が糞すぎてテンプレート部分特殊化を解決してくれないので
+//こちらだけ書き換える。
+template <size_t Index, template <class...> class T>
+struct GetType_T_impl
+{};
+template <template <class...> class T>
+struct GetType_T_impl<0, T>
+{
+	template <class ...U>
+	using Type = T<U...>;
+	template <class U>
+	using Type1 = T<U>;
+	template <class U1, class U2>
+	using Type2 = T<U1, U2>;
+	template <class U1, class U2, class U3>
+	using Type3 = T<U1, U2, U3>;
+};
+template <size_t Index, template <class...> class THead, template <class...> class ...T>
+struct GetType_T : public GetType_T<Index - 1, T...>
+{};
+template <size_t Index, template <class...> class THead>
+struct GetType_T<Index, THead> : public GetType_T_impl<Index, THead>
+{};
+template <template <class...> class THead, template <class...> class ...T>
+struct GetType_T<0, THead, T...> : public GetType_T_impl<0, THead>
+{};
+#else
 template <size_t Index, template <class...> class ...T>
 struct GetType_T;
 template <size_t Index, template <class...> class THead, template <class...> class ...T>
@@ -325,10 +363,62 @@ struct GetType_T<0, THead, T...>
 	template <class U1, class U2, class U3>
 	using Type3 = THead<U1, U2, U3>;
 };
+#endif
+
+
+#if _MSC_VER <= 1900
+//msvc2015は何故か部分特殊化を正しく認識しない。糞すぎだろ。
+//しかたないのでごまかす。
+namespace detail
+{
+template <size_t N, template <class...> class T, template <class...> class Head, template <class...> class ...Body>
+struct FindType_T_impl : public FindType_T_impl<N + 1, T, Body...>
+{};
+template <size_t N, template <class...> class T, template <class...> class ...Body>
+struct FindType_T_impl<N, T, T, Body...>
+{
+	static constexpr bool value = true;
+	static constexpr size_t Index = N;
+};
+template <size_t N, template <class...> class T, template <class...> class Head>
+struct FindType_T_impl<N, T, Head>
+{
+	static constexpr bool value = std::is_same<T, Head>::value;
+	static constexpr size_t Index = value ? N : std::numeric_limits<size_t>::max();
+};
+}
+template <template <class...> class T, template <class...> class ...Args>
+struct FindType_T : public FindType_T_impl<0, T, Args...>
+{};
+#else
+namespace detail
+{
+template <size_t N, template <class...> class T, template <class...> class ...Body>
+struct FindType_T_impl;
+template <size_t N, template <class...> class T, template <class...> class Head, template <class...> class ...Body>
+struct FindType_T_impl<N, T, Head, Body...> : public FindType_T_impl<N + 1, T, Body...>
+{};
+template <size_t N, template <class...> class T, template <class...> class ...Body>
+struct FindType_T_impl<N, T, T, Body...>
+{
+	static constexpr size_t Index = N;
+	static constexpr bool value = true;
+};
+template <size_t N, template <class...> class T>
+struct FindType_T_impl<N, T>
+{
+	static constexpr size_t Index = std::numeric_limits<size_t>::max();
+	static constexpr bool value = false;
+};
+}
+template <template <class...> class T, template <class...> class ...Args>
+struct FindType_T : public detail::FindType_T_impl<0, T, Args...>
+{};
+#endif
+
 
 //int型テンプレート引数を一つだけ持つようなクラスを可変長引数テンプレートに与えたいときに、
 //それを一つに纏めるために使う。
-//ぶっちゃけInterpreterとTraverser専用。それ以外の使い道なんざねぇよ。
 template <template <size_t, class ...> class ...T>
 struct UnindexedList
 {
@@ -364,6 +454,7 @@ template <template <class...> class ...T>
 struct UnarguedList
 {
 public:
+	template <size_t Index> using GetType_T = typename adapt::GetType_T<Index, T...>;
 	static constexpr std::size_t Size = sizeof...(T);
 };
 //単なる型の羅列。
@@ -371,6 +462,8 @@ template <class ...T>
 struct TypeList
 {
 	static constexpr std::size_t Size = sizeof...(T);
+	template <size_t Index> using GetType = typename adapt::GetType<Index, T...>::Type;
+	template <class Type> static constexpr size_t FindType() { return adapt::FindType<Type, T...>::Index; }//変数テンプレートはC++17からなので。
 };
 template <class ...T>
 struct CatTypeList;
@@ -493,6 +586,9 @@ struct AndOperationSeqEnabler_impl<true>
 template <bool ...BoolSequence>
 using AndOperationSeqEnablerT = typename AndOperationSeqEnabler_impl<AndOperationSeq<BoolSequence...>::value>::Type;
 
+template <bool ...B>
+using Conjunction = AndOperationSeq<B...>;
+
 template <bool B>
 using EnableIfT = std::enable_if_t<B, std::nullptr_t>;
 
@@ -524,6 +620,9 @@ struct OrOperationSeqEnabler_impl<true>
 };
 template <bool ...BoolSequence>
 using OrOperationSeqEnablerT = typename OrOperationSeqEnabler_impl<OrOperationSeq<BoolSequence...>::value>::Type;
+
+template <bool ...B>
+using Disjunction = OrOperationSeq<B...>;
 
 namespace detail
 {
@@ -676,4 +775,5 @@ struct FunctionTraits
 }
 
 }
+
 #endif

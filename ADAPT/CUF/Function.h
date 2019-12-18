@@ -1,4 +1,4 @@
-﻿//
+//
 // Copyright (c) 2017-2019 Hayakawa
 // Released under the 2-Clause BSD license.
 // see https://opensource.org/licenses/BSD-2-Clause
@@ -9,6 +9,7 @@
 
 #include <string>
 #include <vector>
+#include <array>
 #include <mutex>
 #include <random>
 #include <sstream>
@@ -310,17 +311,13 @@ public:
 	BundledRange_impl(C&&... c)
 		: mContainers(std::forward<C>(c)...) {}
 
-	auto begin() const
-	{
-		return MakeBundledIterator(std::get<Indices>(mContainers).begin()...);
-	}
-	auto end() const
-	{
-		return MakeBundledIterator(std::get<Indices>(mContainers).end()...);
-	}
+	auto begin() const { return MakeBundledIterator(std::get<Indices>(mContainers).begin()...); }
+	auto begin() { return MakeBundledIterator(std::get<Indices>(mContainers).begin()...); }
+	auto end() const { return MakeBundledIterator(std::get<Indices>(mContainers).end()...); }
+	auto end() { return MakeBundledIterator(std::get<Indices>(mContainers).end()...); }
 
 private:
-	std::tuple<Containers&&...> mContainers;
+	std::tuple<Containers...> mContainers;
 };
 
 }
@@ -352,7 +349,7 @@ public:
 	}
 
 private:
-	std::tuple<Containers&&...> mContainers;
+	std::tuple<Containers...> mContainers;
 };
 
 }
@@ -369,7 +366,7 @@ BundledRange<Containers...> BundleRange(Containers&& ...cs)
 template <class ...Containers>
 BundledRangeWithIndex<Containers&&...> BundleRangeWithIndex(Containers&& ...cs)
 {
-	return BundledRangeWithIndex<Containers&&...>(std::forward<Containers&&>(cs)...);
+	return BundledRangeWithIndex<Containers...>(std::forward<Containers>(cs)...);
 }
 
 namespace detail
@@ -393,36 +390,36 @@ public:
 			++mIterator;
 			return *this;
 		}
-		T& operator*() const noexcept
-		{
-			return *(*mIterator);
-		}
-		/*const T& operator*() const noexcept
-		{
-			return **mIterator;
-		}*/
-		bool operator==(const Iterator& it2) const
-		{
-			return mIterator == it2.mIterator;
-		}
-		bool operator!=(const Iterator& it2) const
-		{
-			return !(*this == it2);
-		}
+		T& operator*() const noexcept { return *(*mIterator); }
+		bool operator==(const Iterator& it2) const { return mIterator == it2.mIterator; }
+		bool operator!=(const Iterator& it2) const { return !(*this == it2); }
 
 	private:
 		typename std::array<std::add_pointer_t<T>, N>::iterator mIterator;
 	};
+	class ConstIterator
+	{
+	public:
+		ConstIterator(typename std::array<std::add_pointer_t<T>, N>::const_iterator i) : mIterator(i) {}
+
+		ConstIterator& operator++()
+		{
+			++mIterator;
+			return *this;
+		}
+		const T& operator*() const noexcept { return *(*mIterator); }
+		bool operator==(const Iterator& it2) const { return mIterator == it2.mIterator; }
+		bool operator!=(const Iterator& it2) const { return !(*this == it2); }
+
+	private:
+		typename std::array<std::add_pointer_t<T>, N>::const_iterator mIterator;
+	};
 
 	constexpr std::size_t size() const { return N; }
-	Iterator begin()
-	{
-		return Iterator(mPtrArray.begin());
-	}
-	Iterator end()
-	{
-		return Iterator(mPtrArray.end());
-	}
+	Iterator begin() { return Iterator(mPtrArray.begin()); }
+	//ConstIterator begin() const { return ConstIterator(mPtrArray.begin()); }
+	Iterator end() { return Iterator(mPtrArray.end()); }
+	//ConstIterator end() const { return ConstIterator(mPtrArray.end()); }
 
 private:
 

@@ -1,4 +1,4 @@
-﻿//
+//
 // Copyright (c) 2017-2019 Hayakawa
 // Released under the 2-Clause BSD license.
 // see https://opensource.org/licenses/BSD-2-Clause
@@ -36,6 +36,12 @@ CUF_REPEAT_FOR_30(first, x) CUF_REPEAT_FOR_40(30 + first, x)
 
 #define CUF_REPEAT_FOR_80(first, x)\
 CUF_REPEAT_FOR_40(first, x) CUF_REPEAT_FOR_40(40 + first, x)
+
+#define CUF_REPEAT_FOR_90(first, x)\
+CUF_REPEAT_FOR_40(first, x) CUF_REPEAT_FOR_50(40 + first, x)
+
+#define CUF_REPEAT_FOR_100(first, x)\
+CUF_REPEAT_FOR_50(first, x) CUF_REPEAT_FOR_50(50 + first, x)
 
 #define CUF_REPEAT_FOR(NoT, x) CUF_REPEAT_FOR_##NoT(0, x)
 

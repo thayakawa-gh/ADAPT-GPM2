@@ -1,4 +1,4 @@
-﻿#ifndef CUF_SWITCH_H
+#ifndef CUF_SWITCH_H
 #define CUF_SWITCH_H
 
 #include <tuple>
@@ -60,6 +60,8 @@ struct _FlexibleSwitch<NSwitch, N, Functor, false>
 //どうせこれ使ってるのInterpreterだけだし、各種InternalInterpreterのインターフェイスクラスを作るだけでよかったんじゃ。
 //いやまあ、原理的に計算回数は減らせるので、全く無駄ではないはず。
 //impl2とimpl3が分離しているのは、Functor用IndicesとArg用Indicesの展開が重複した際にVisual Studio 2017がエラーを出すため。バグっぽい。
+namespace detail
+{
 template<std::size_t N, class Result, template <std::size_t> class Functor, class Tuple, std::size_t ...ArgIndices>
 Result TabulationSwitch_impl3(Tuple&& t, std::index_sequence<ArgIndices...>)
 {
@@ -80,11 +82,11 @@ Result TabulationSwitch_impl(std::size_t n, Tuple&& t, std::index_sequence<Indic
 	};
 	return func[n](std::forward<Tuple>(t), ais);
 }
-
+}
 template<std::size_t SwitchNum, template <std::size_t> class Functor, class ...Args>
 decltype(auto) TabulationSwitch(std::size_t n, Args&& ...args)
 {
-	return TabulationSwitch_impl<SwitchNum, decltype(std::declval<Functor<0>>().apply(std::forward<Args>(args)...)), Functor>(
+	return detail::TabulationSwitch_impl<SwitchNum, decltype(std::declval<Functor<0>>().apply(std::forward<Args>(args)...)), Functor>(
 		n, std::forward_as_tuple(std::forward<Args>(args)...), std::make_index_sequence<SwitchNum>(), std::make_index_sequence<sizeof...(Args)>());
 }
 
@@ -121,12 +123,13 @@ apply(std::forward<Args>(args)...);
 //固定長Switch版も用意しておく。
 //そのうち特殊化して任意のSwitchNumに対応するように書き直したい。
 template<std::size_t SwitchNum, template <std::size_t> class Functor, class ...Args>
-decltype(auto) FixedLengthSwitch(int n, Args&& ...args)
+decltype(auto) FixedLengthSwitch(size_t n, Args&& ...args)
 {
 	switch (n)
 	{
-		CUF_REPEAT_FOR(80, PSEUDOVARIABLESWITCH_FUNC)
+		CUF_REPEAT_FOR(100, PSEUDOVARIABLESWITCH_FUNC)
 	}
+	throw OutOfRange("");
 }
 #undef PSEUDOVARIABLESWITCH_FUNC
 

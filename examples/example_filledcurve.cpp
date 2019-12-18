@@ -6,7 +6,7 @@
 
 #include <ADAPT/GPM2/GPMCanvas.h>
 
-using namespace adapt::gpm2;
+using namespace adapt::gpm2; 
 
 struct ChiSquare
 {
@@ -42,8 +42,7 @@ int main()
 	/*
 	1. PlotFilledCurves(const std::vector<double>& x, const std::vector<double>& y, Options ...options)
 	2. PlotFilledCurves(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& y2, Options ...options)
-	the area between the curve and (1)a line given bu baseline option(y=0 by default) (2)y2 curve is filled.
-
+	the area between the curve and (1)a line given by baseline option(y=0 by default) (2)y2 curve is filled.
 	 * options for FilledCurves
 	title          ... title.
 	axis           ... set of axes to scale lines. (e.g. plot::axis = "x1y2")
@@ -60,6 +59,7 @@ int main()
 	*/
 
 	GPMCanvas2D g("example_filledcurve.png");
+	g.ShowCommands(true);
 	g.SetTitle("example\\_filledcurve");
 	g.SetXRange(0, 8.0);
 	g.SetYRange(0, 1.0);

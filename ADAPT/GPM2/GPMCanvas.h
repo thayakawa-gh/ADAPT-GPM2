@@ -1,4 +1,4 @@
-﻿//
+//
 // Copyright (c) 2017-2019 Hayakawa
 // Released under the 2-Clause BSD license.
 // see https://opensource.org/licenses/BSD-2-Clause
@@ -16,6 +16,7 @@
 #include <ADAPT/CUF/Matrix.h>
 #include <ADAPT/CUF/KeywordArgs.h>
 #include <ADAPT/CUF/Format.h>
+#include <ADAPT/CUF/Function.h>
 #include <ADAPT/GPM2/GPMArrayData.h>
 
 namespace adapt
@@ -30,9 +31,9 @@ class GPMCanvas
 {
 public:
 
-	friend class GPMMultiPlotter;
+	friend class GPMMultiPlot;
 
-	GPMCanvas(const std::string& output);
+	GPMCanvas(const std::string& output, double sizex = 0., double sizey = 0.);
 	GPMCanvas();
 	GPMCanvas(const GPMCanvas&) = delete;
 	GPMCanvas(GPMCanvas&&) = delete;
@@ -44,7 +45,7 @@ public:
 	void SetRange(const std::string& axis, double min, double max);
 	void SetRangeMin(const std::string& axis, double min);
 	void SetRangeMax(const std::string& axis, double max);
-	void SetLog(const std::string& axis, double scale = 10);
+	void SetLog(const std::string& axis, double base = 10);
 
 	//見出しを数字から与えられた文字列に置き換える。
 	template <class ...Args>
@@ -57,7 +58,7 @@ private:
 	void SetTics_make(std::string& tics);
 public:
 
-	void SetGrid(const std::string& color = "", int type = -1, int width = -1);
+	void SetGrid(const std::string& color = "", int type = -2, int width = -1);
 
 	void SetSize(double x, double y);
 	void SetSizeRatio(double ratio);//-1を与えるとticsの幅が等しくなる。
@@ -65,6 +66,7 @@ public:
 	void SetPaletteDefined(const std::vector<std::pair<double, std::string>>& color);
 	void SetPaletteRGBFormulae(int x, int y, int z);
 	void SetPaletteCubehelix(double start, double cycles, double saturation);
+	void SetPaletteMaxcolors(int num);
 	//void SetKeyOff();
 	//void SetKey(const std::string& posx, const std::string& posy);//"left", "right", "top", "bottom", "outside", "below"をxyそれぞれに。
 
@@ -72,12 +74,19 @@ public:
 
 	void SetParametric();
 
+	void SetLeftMargin(double w);
+	void SetRightMargin(double w);
+	void SetTopMargin(double w);
+	void SetBottomMargin(double w);
 
-	void SetOutput(const std::string& output);
+	void SetMargins(double l, double r, double b, double t);
+
+	void SetOutput(const std::string& output, double sizex, double sizey);
 	void Reset();
 	const std::string& GetOutput() const;
 
 	void Command(const std::string& str);
+	void ShowCommands(bool b);
 
 	static void SetGnuplotPath(const std::string& path);
 	//GnuplotPathは
@@ -91,6 +100,7 @@ protected:
 
 	std::string mOutput;
 	FILE* mPipe;
+	bool mShowCommands;
 	template <class = void>
 	struct Paths
 	{
@@ -103,8 +113,8 @@ protected:
 };
 
 
-inline GPMCanvas::GPMCanvas(const std::string& output)
-	: mOutput(output), mPipe(nullptr)
+inline GPMCanvas::GPMCanvas(const std::string& output, double sizex, double sizey)
+	: mOutput(output), mPipe(nullptr), mShowCommands(false)
 {
 	if (Paths<>::msGlobalPipe != nullptr) mPipe = Paths<>::msGlobalPipe;
 	else
@@ -119,7 +129,7 @@ inline GPMCanvas::GPMCanvas(const std::string& output)
 		}
 		else
 		{
-			SetOutput(output);
+			SetOutput(output, sizex, sizey);
 		}
 	}
 	if (mPipe)
@@ -129,7 +139,7 @@ inline GPMCanvas::GPMCanvas(const std::string& output)
 	}
 }
 inline GPMCanvas::GPMCanvas()
-	: mOutput("ADAPT_GPM2_TMPFILE"), mPipe(nullptr)
+	: mOutput("ADAPT_GPM2_TMPFILE"), mPipe(nullptr), mShowCommands(false)
 {
 	if (Paths<>::msGlobalPipe != nullptr) mPipe = Paths<>::msGlobalPipe;
 	else
@@ -180,9 +190,9 @@ inline void GPMCanvas::SetRangeMax(const std::string& axis, double max)
 	Command(Format("set %srange [:%lf]", axis, max));
 }
 
-inline void GPMCanvas::SetLog(const std::string& axis, double scale)
+inline void GPMCanvas::SetLog(const std::string& axis, double base)
 {
-	Command(Format("set logscale %s %lf", axis, scale));
+	Command(Format("set logscale %s %lf", axis, base));
 }
 
 inline void GPMCanvas::SetTics_make(std::string& tics)
@@ -196,7 +206,7 @@ inline void GPMCanvas::SetGrid(const std::string& color, int type, int width)
 {
 	std::string c;
 	if (!color.empty()) c += " linecolor rgb \"" + color + "\"";
-	if (type != -1) c += " linetype " + std::to_string(type);
+	if (type != -2) c += " linetype " + std::to_string(type);
 	if (width != -1) c += " linewidth " + std::to_string(width);
 	Command("set grid" + c);
 }
@@ -227,6 +237,10 @@ inline void GPMCanvas::SetPaletteCubehelix(double start, double cycles, double s
 {
 	Command(Format("set palette cubehelix start %lf, cycles %lf, saturation %lf", start, cycles, saturation));
 }
+inline void GPMCanvas::SetPaletteMaxcolors(int num)
+{
+	Command(Format("set palette naxcolors %d", num));
+}
 inline void GPMCanvas::SetTitle(const std::string& title)
 {
 	Command("set title '" + title + "'");
@@ -235,15 +249,53 @@ inline void GPMCanvas::SetParametric()
 {
 	Command("set parametric");
 }
-inline void GPMCanvas::SetOutput(const std::string& output)
+
+inline void GPMCanvas::SetLeftMargin(double w)
+{
+	Command(Format("set lmargin ", w));
+}
+inline void GPMCanvas::SetRightMargin(double w)
+{
+	Command(Format("set rmargin ", w));
+}
+inline void GPMCanvas::SetBottomMargin(double w)
+{
+	Command(Format("set bmargin ", w));
+}
+inline void GPMCanvas::SetTopMargin(double w)
+{
+	Command(Format("set tmargin ", w));
+}
+
+inline void GPMCanvas::SetMargins(double l, double r, double b, double t)
+{
+	SetLeftMargin(l);
+	SetRightMargin(r);
+	SetBottomMargin(b);
+	SetTopMargin(t);
+}
+
+inline void GPMCanvas::SetOutput(const std::string& output, double sizex, double sizey)
 {
 	if (output.size() > 4)
 	{
 		std::string extension = output.substr(output.size() - 4, 4);
 		std::string repout = ReplaceStr(output, "\\", "/");
-		if (extension == ".png") Command("set terminal pngcairo enhanced size 800, 600\nset output '" + repout + "'");
-		else if (extension == ".eps") Command("set terminal epscairo enhanced size 6in, 4in\nset output '" + repout + "'");
-		else if (extension == ".pdf") Command("set terminal pdfcairo enhanced size 6in, 4in\nset output '" + repout + "'");
+		if (extension == ".png")
+		{
+			if (sizex == 0 && sizey == 0) sizex = 800, sizey = 600;
+			Command(Format("set terminal pngcairo enhanced size %d, %d\nset output '" + repout + "'", sizex, sizey));
+		}
+		else if (extension == ".eps")
+		{
+			if (sizex == 0 && sizey == 0) sizex = 6, sizey = 4.5;
+			Command(Format("set terminal epscairo enhanced size %din, %din\nset output '" + repout + "'", sizex, sizey));
+		}
+		else if (extension == ".pdf")
+		{
+			if (sizex == 0 && sizey == 0) sizex = 6, sizey = 4.5;
+			Command(Format("set terminal pdfcairo enhanced size %lfin, %lfin\nset output '" + repout + "'", sizex, sizey));
+		}
 	}
 	else if (output == "wxt");
 	else std::cout << "WARNING : " << output << " is not a terminal or has no valid extension. Default terminal is selected." << std::endl;
@@ -262,6 +314,11 @@ inline void GPMCanvas::Command(const std::string& str)
 {
 	fprintf(mPipe, (str + "\n").c_str());
 	fflush(mPipe);
+	if (mShowCommands) std::cout << str << std::endl;
+}
+inline void GPMCanvas::ShowCommands(bool b)
+{
+	mShowCommands = b;
 }
 
 
@@ -283,7 +340,7 @@ template <class T>
 std::string GPMCanvas::Paths<T>::msGnuplotPath = "";
 #ifdef _WIN32
 template <class T>
-const std::string GPMCanvas::Paths<T>::msDefaultGnuplotPath = "C:/PROGRA~2/gnuplot/bin/gnuplot.exe";
+const std::string GPMCanvas::Paths<T>::msDefaultGnuplotPath = "C:/Progra~1/gnuplot/bin/gnuplot.exe";
 #endif
 template <class T>
 FILE* GPMCanvas::Paths<T>::msGlobalPipe = nullptr;
@@ -337,21 +394,26 @@ inline void MakeFile(const Matrix<double>& map, GetX getx, GetY gety, const std:
 	for (uint32_t iy = 0; iy < ysize; ++iy)
 	{
 		double y = gety(iy);
+		double cy = gety.center(iy);
 		for (uint32_t ix = 0; ix < xsize; ++ix)
 		{
 			double x = getx(ix);
-			ofs << x << " " << y << " " << map[ix][iy] << "\n";
+			double cx = getx.center(ix);
+			ofs << x << " " << y << " " << cx << " " << cy << " " << map[ix][iy] << "\n";
 		}
 		double x = getx(xsize);
-		ofs << x << " " << y << " 0\n\n";
+		double cx = getx.center(xsize);
+		ofs << x << " " << y << " " << cx << " " << cy << " " << " 0\n\n";
 	}
 	double y = gety(ysize);
+	double cy = gety.center(ysize);
 	for (uint32_t ix = 0; ix < xsize; ++ix)
 	{
 		double x = getx(ix);
-		ofs << x << " " << y << " 0\n";
+		double cx = getx.center(ix);
+		ofs << x << " " << y << " " << cx << " " << cy << " " << " 0\n";
 	}
-	ofs << getx(xsize) << " " << y << " 0\n";
+	ofs << getx(xsize) << " " << y << " " << getx.center(xsize) << " " << cy << " 0\n";
 }
 
 template <class PointParam>
@@ -368,7 +430,7 @@ std::string PointPlotCommand(const PointParam& p)
 				c += " xerrorlines";
 			else
 				c += " yerrorlines";
-			if (p.mLineType != -1) c += " linetype " + std::to_string(p.mLineType);
+			if (p.mLineType != -2) c += " linetype " + std::to_string(p.mLineType);
 			if (p.mLineWidth != -1) c += " linewidth " + std::to_string(p.mLineWidth);
 			if (!p.mColor.empty()) c += " linecolor '" + p.mColor + "'";
 			else if (p.mVariableColor) c += " linecolor palette";
@@ -382,7 +444,7 @@ std::string PointPlotCommand(const PointParam& p)
 				std::cerr << "WARNING : Box style is incompatible with xerrorbar option. It is to be ignored." << std::endl;
 			else
 				c += " boxerrorbars";
-			if (p.mLineType != -1) c += " linetype " + std::to_string(p.mLineType);
+			if (p.mLineType != -2) c += " linetype " + std::to_string(p.mLineType);
 			if (p.mLineWidth != -1) c += " linewidth " + std::to_string(p.mLineWidth);
 			if (!p.mColor.empty()) c += " linecolor '" + p.mColor + "'";
 			else if (p.mVariableColor) c += " linecolor palette";
@@ -422,7 +484,7 @@ std::string PointPlotCommand(const PointParam& p)
 		case Style::histeps: c += " histeps"; break;
 		case Style::boxes: c += " boxes"; break;
 		}
-		if (p.mLineType != -1) c += " linetype " + std::to_string(p.mLineType);
+		if (p.mLineType != -2) c += " linetype " + std::to_string(p.mLineType);
 		if (p.mLineWidth != -1) c += " linewidth " + std::to_string(p.mLineWidth);
 		if (!p.mColor.empty()) c += " linecolor '" + p.mColor + "'";
 		else if (p.mVariableColor) c += " linecolor palette";
@@ -430,7 +492,7 @@ std::string PointPlotCommand(const PointParam& p)
 	else if (p.mStyle == Style::points)
 	{
 		c += " points";
-		if (p.mLineType != -1)
+		if (p.mLineType != -2)
 			std::cerr << "WARNING : \"points\" style is incompatible with linetype option. It is to be ignored." << std::endl;
 		if (p.mLineWidth != -1)
 			std::cerr << "WARNING : \"points\" style is incompatible with linewidth option. It is to be ignored." << std::endl;
@@ -442,7 +504,7 @@ std::string PointPlotCommand(const PointParam& p)
 	else if (p.mStyle == Style::linespoints)
 	{
 		c += " linespoints";
-		if (p.mLineType != -1) c += " linetype " + std::to_string(p.mLineType);
+		if (p.mLineType != -2) c += " linetype " + std::to_string(p.mLineType);
 		if (p.mLineWidth != -1) c += " linewidth " + std::to_string(p.mLineWidth);
 		if (p.mPointType != -1) c += " pointtype " + std::to_string(p.mPointType);
 		if (p.mPointSize != -1) c += " pointsize " + std::to_string(p.mPointSize);
@@ -452,7 +514,7 @@ std::string PointPlotCommand(const PointParam& p)
 	else if (p.mStyle == Style::dots)
 	{
 		c += " dots";
-		if (p.mLineType != -1)
+		if (p.mLineType != -2)
 			std::cerr << "WARNING : \"points\" style is incompatible with linetype option. It is to be ignored." << std::endl;
 		if (p.mLineWidth != -1)
 			std::cerr << "WARNING : \"points\" style is incompatible with linewidth option. It is to be ignored." << std::endl;
@@ -495,7 +557,7 @@ std::string VectorPlotCommand(const VectorParam& v)
 		else if ((v.mArrowHead & 0b1100) == 5) c += " empty";
 		else if ((v.mArrowHead & 0b1100) == 6) c += " nofilled";
 	}
-	if (v.mLineType != -1) c += " linetype " + std::to_string(v.mLineType);
+	if (v.mLineType != -2) c += " linetype " + std::to_string(v.mLineType);
 	if (v.mLineWidth != -1) c += " linewidth " + std::to_string(v.mLineWidth);
 	if (!v.mColor.empty()) c += " linecolor '" + v.mColor + "'";
 	else if (v.mVariableColor) c += " linecolor palette";
@@ -519,8 +581,8 @@ std::string FilledCurveplotCommand(const FilledCurveParam& f)
 	else if (f.mBelow) c += " below";
 	if (!f.mBaseline.empty()) c += " " + f.mBaseline;
 
-	if (!f.mFillColor.empty()) c += " linecolor '" + f.mFillColor + "'";
-	else if (f.mVariableColor) c += " linecolor palette";
+	if (!f.mFillColor.empty()) c += " fillcolor '" + f.mFillColor + "'";
+	else if (f.mVariableColor) c += " fillcolor palette";
 	{
 		std::string fs;
 		if (f.mTransparent != -1 && f.mPattern == -1) fs += Format(" transparent solid %lf", f.mTransparent);
@@ -530,7 +592,8 @@ std::string FilledCurveplotCommand(const FilledCurveParam& f)
 	}
 	{
 		std::string bd;
-		if (f.mBorderType != -1) bd += Format(" %d", f.mBorderType);
+		if (f.mBorderType == -2) bd += Format(" noborder");
+		else if (f.mBorderType != -3) bd += Format(" %d", f.mBorderType);
 		if (!f.mBorderColor.empty()) bd += " linecolor '" + f.mBorderColor + "'";
 		if (!bd.empty()) c += " border" + bd;
 	}
@@ -552,7 +615,7 @@ public:\
 	void Set##AXIS##Range(double min, double max);\
 	void Set##AXIS##RangeMin(double min);\
 	void Set##AXIS##RangeMax(double max);\
-	void SetLog##AXIS();\
+	void SetLog##AXIS(double base = 0);\
 	template <class ...Args>\
 	void Set##AXIS##Tics(Args&& ...args);\
 };\
@@ -565,7 +628,7 @@ inline void GPM##AXIS##Axis<GPM>::Set##AXIS##RangeMin(double min) { this->SetRan
 template <class GPM>\
 inline void GPM##AXIS##Axis<GPM>::Set##AXIS##RangeMax(double max) { this->SetRangeMax(axis, max); }\
 template <class GPM>\
-inline void GPM##AXIS##Axis<GPM>::SetLog##AXIS() { this->SetLog(axis); }\
+inline void GPM##AXIS##Axis<GPM>::SetLog##AXIS(double base) { this->SetLog(axis, base); }\
 template <class GPM>\
 template <class ...Args>\
 inline void GPM##AXIS##Axis<GPM>::Set##AXIS##Tics(Args&& ...args) { this->SetTics(axis, std::forward<Args>(args)...); }
@@ -581,10 +644,17 @@ DEF_GPMAXIS(CB, "cb")
 #undef DEF_GPMAXIS
 
 template <class GPM>
-using GPM2DAxis = GPMXAxis<GPMX2Axis<GPMYAxis<GPMY2Axis<GPMCBAxis<GPM>>>>>;
-
+struct GPM2DAxis : public GPMXAxis<GPMX2Axis<GPMYAxis<GPMY2Axis<GPMCBAxis<GPM>>>>>
+{
+	using Base = GPMXAxis<GPMX2Axis<GPMYAxis<GPMY2Axis<GPMCBAxis<GPM>>>>>;
+	using Base::Base;
+};
 template <class GPM>
-using GPM3DAxis = GPMZAxis<GPM2DAxis<GPM>>;
+struct GPM3DAxis : public GPMZAxis<GPM2DAxis<GPM>>
+{
+	using Base = GPMZAxis<GPM2DAxis<GPM>>;
+	using Base::Base;
+};
 
 }
 
@@ -647,7 +717,7 @@ namespace plot = gpm2::plot;
 struct GPMPointParam
 {
 	GPMPointParam()
-		: mLineType(-1), mLineWidth(-1), mPointType(-1), mPointSize(-1),
+		: mLineType(-2), mLineWidth(-1), mPointType(-1), mPointSize(-1),
 		mStyle(Style::none), mSmooth(Smooth::none)
 	{}
 
@@ -662,13 +732,13 @@ struct GPMPointParam
 		mSmooth = GetKeywordArg(plot::smooth, ops..., Smooth::none);
 		mPointType = GetKeywordArg(plot::pointtype, ops..., -1);
 		mPointSize = GetKeywordArg(plot::pointsize, ops..., -1);
-		mLineType = GetKeywordArg(plot::linetype, ops..., -1);
+		mLineType = GetKeywordArg(plot::linetype, ops..., -2);
 		mLineWidth = GetKeywordArg(plot::linewidth, ops..., -1);
 		mColor = GetKeywordArg(plot::color, ops..., "");
 	}
 
 	//LineOption
-	int mLineType;//-1ならデフォルト
+	int mLineType;//-2ならデフォルト
 	double mLineWidth;//-1ならデフォルト、-2ならvariable
 	std::string mColor;
 	plot::ArrayData mVariableColor;
@@ -687,20 +757,20 @@ struct GPMPointParam
 struct GPMVectorParam
 {
 	GPMVectorParam()
-		: mLineType(-1), mLineWidth(-1), mArrowHead(0)
+		: mLineType(-2), mLineWidth(-1), mArrowHead(0)
 	{}
 
 	template <class ...Ops>
 	void SetOptions(Ops ...ops)
 	{
-		mLineType = GetKeywordArg(plot::linetype, ops..., -1);
+		mLineType = GetKeywordArg(plot::linetype, ops..., -2);
 		mLineWidth = GetKeywordArg(plot::linewidth, ops..., -1);
 		mColor = GetKeywordArg(plot::color, ops..., "");
 		if (KeywordExists(plot::variable_color, ops...)) mVariableColor = GetKeywordArg(plot::variable_color, ops...);
 	}
 
 	//LineOption
-	int mLineType;//-1ならデフォルト
+	int mLineType;//-2ならデフォルト
 	double mLineWidth;//-1ならデフォルト、-2ならvariable
 	std::string mColor;
 	plot::ArrayData mVariableColor;
@@ -715,7 +785,7 @@ struct GPMVectorParam
 struct GPMFilledCurveParam
 {
 	GPMFilledCurveParam()
-		: mClosed(false), mAbove(false), mBelow(false), mPattern(-1), mTransparent(-1), mBorderType(-1)
+		: mClosed(false), mAbove(false), mBelow(false), mPattern(-1), mTransparent(-1), mBorderType(-3)
 	{}
 
 	template <class ...Ops>
@@ -729,7 +799,7 @@ struct GPMFilledCurveParam
 		mPattern = GetKeywordArg(plot::fillpattern, ops..., -1);
 		mTransparent = GetKeywordArg(plot::filltransparent, ops..., -1);
 		mBorderColor = GetKeywordArg(plot::bordercolor, ops..., "");
-		mBorderType = GetKeywordArg(plot::bordertype, ops..., -1);
+		mBorderType = GetKeywordArg(plot::bordertype, ops..., -3);
 	}
 
 	//FillOption
@@ -1195,6 +1265,9 @@ PlotFilledCurves(const std::vector<double>& x, const std::vector<double>& y, con
 
 }
 
+enum class Contour { none, base, surface, both, };
+enum class CntrSmooth { none, linear, cubicspline, bspline };
+
 namespace plot
 {
 
@@ -1212,23 +1285,51 @@ CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(ycoord, const ArrayData&, ColormapOp
 CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(xrange, CUF_TIE_ARGS(std::pair<double, double>), ColormapOption)
 CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(yrange, CUF_TIE_ARGS(std::pair<double, double>), ColormapOption)
 
-}
+//options for contour plot
+CUF_DEFINE_TAGGED_KEYWORD_OPTION(with_contour, ColormapOption)
+CUF_DEFINE_TAGGED_KEYWORD_OPTION(without_surface, ColormapOption)
+CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrsmooth, CntrSmooth, ColormapOption)
+CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrpoints, int, ColormapOption)//the number of lines for cspline and bspline
+CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrorder, int, ColormapOption)//order for bspline, [2, 10]
+CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlevels_auto, int, ColormapOption)
+CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlevels_discrete, const std::vector<double>&, ColormapOption)
+CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlevels_incremental, CUF_TIE_ARGS(std::tuple<double, double, double>), ColormapOption)
+CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrcolor, const std::string&, ColormapOption)
+CUF_DEFINE_TAGGED_KEYWORD_OPTION(variable_cntrcolor, ColormapOption)
+CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlinetype, int, ColormapOption)
+CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(cntrlinewidth, double, ColormapOption)
 
+}
 
 namespace detail
 {
 
 struct GPMPointParamCM : public GPMPointParam
 {
+	template <class ...Ops>
+	void SetOptions(Ops ...ops)
+	{
+		GPMPointParam::SetOptions(ops...);
+	}
 	plot::ArrayData mZ;
 };
 struct GPMVectorParamCM : public GPMVectorParam
 {
+	template <class ...Ops>
+	void SetOptions(Ops ...ops)
+	{
+		GPMVectorParam::SetOptions(ops...);
+	}
 	plot::ArrayData mZ;
 	plot::ArrayData mZLen;
 };
 struct GPMFilledCurveParamCM : public GPMFilledCurveParam
 {
+	template <class ...Ops>
+	void SetOptions(Ops ...ops)
+	{
+		GPMFilledCurveParam::SetOptions(ops...);
+	}
 	plot::ArrayData mZ;
 };
 struct GPMColormapParam
@@ -1240,7 +1341,18 @@ struct GPMColormapParam
 	template <class ...Ops>
 	void SetOptions(Ops ...ops)
 	{
-
+		mWithContour = KeywordExists(plot::with_contour, ops...);
+		mWithoutSurface = KeywordExists(plot::without_surface, ops...);
+		mCntrSmooth = GetKeywordArg(plot::cntrsmooth, ops..., CntrSmooth::none);
+		mCntrPoints = GetKeywordArg(plot::cntrpoints, ops..., -1);
+		mCntrOrder = GetKeywordArg(plot::cntrorder, ops..., -1);
+		mCntrLevelsAuto = GetKeywordArg(plot::cntrlevels_auto, ops..., -1);
+		mCntrLevelsDiscrete = GetKeywordArg(plot::cntrlevels_discrete, ops..., std::vector<double>{});
+		mCntrLevelsIncremental = GetKeywordArg(plot::cntrlevels_incremental, ops..., std::tuple<double, double, double>{ 0, 0, 0 });
+		mCntrColor = GetKeywordArg(plot::cntrcolor, ops..., "");
+		mVariableCntrColor = KeywordExists(plot::variable_cntrcolor, ops...);
+		mCntrLineType = GetKeywordArg(plot::cntrlinetype, ops..., -2);
+		mCntrLineWidth = GetKeywordArg(plot::cntrlinewidth, ops..., -1.);
 	}
 	//ColormapOption
 	//int mThinout;//要素ごとにプロットするときに、ビンあたりの要素がこの値を超えている場合、乱数でこの数程度になるように間引く。
@@ -1251,30 +1363,52 @@ struct GPMColormapParam
 	std::pair<double, double> mXRange;
 	std::pair<double, double> mYRange;
 	plot::MatrixData mZMap;
+
+	bool mWithContour;
+	bool mWithoutSurface;
+	CntrSmooth mCntrSmooth;
+	int mCntrPoints;
+	int mCntrOrder;
+	int mCntrLevelsAuto;
+	std::vector<double> mCntrLevelsDiscrete;
+	std::tuple<double, double, double> mCntrLevelsIncremental;
+	std::string mCntrColor;
+	bool mVariableCntrColor;
+	int mCntrLineType;
+	double mCntrLineWidth;
 };
 
-struct GPMGraphParamCM
-	: public GPMGraphParamBase<GPMPointParamCM, GPMVectorParamCM, GPMFilledCurveParamCM, GPMColormapParam>
+template <class PointParam, class VectorParam, class FilledCurveParam, class ColormapParam>
+struct GPMGraphParamBaseCM
+	: public GPMGraphParamBase<PointParam, VectorParam, FilledCurveParam, ColormapParam>
 {
-	void AssignPoint() { Emplace<GPMPointParamCM>(); }
-	void AssignVector() { Emplace<GPMVectorParamCM>(); }
-	void AssignFilledCurve() { Emplace<GPMFilledCurveParamCM>(); }
-	void AssignColormap() { Emplace<GPMColormapParam>(); }
+	template <class ...Ops>
+	void SetBaseOptions(Ops ...ops)
+	{
+		GPMGraphParamBase<PointParam, VectorParam, FilledCurveParam, ColormapParam>::SetBaseOptions(ops...);
+	}
 
-	bool IsPoint() const { return Is<GPMPointParamCM>(); }
-	bool IsVector() const { return Is<GPMVectorParamCM>(); }
-	bool IsFilledCurve() const { return Is<GPMFilledCurveParamCM>(); }
-	bool IsColormap() const { return Is<GPMColormapParam>(); }
+	void AssignPoint() { this->Emplace<PointParam>(); }
+	void AssignVector() { this->Emplace<VectorParam>(); }
+	void AssignFilledCurve() { this->Emplace<FilledCurveParam>(); }
+	void AssignColormap() { this->Emplace<ColormapParam>(); }
 
-	GPMPointParamCM& GetPointParam() { return Get<GPMPointParamCM>(); }
-	const GPMPointParamCM& GetPointParam() const { return Get<GPMPointParamCM>(); }
-	GPMVectorParamCM& GetVectorParam() { return Get<GPMVectorParamCM>(); }
-	const GPMVectorParamCM& GetVectorParam() const { return Get<GPMVectorParamCM>(); }
-	GPMFilledCurveParamCM& GetFilledCurveParam() { return Get<GPMFilledCurveParamCM>(); }
-	const GPMFilledCurveParamCM& GetFilledCurveParam() const { return Get<GPMFilledCurveParamCM>(); }
-	GPMColormapParam& GetColormapParam() { return Get<GPMColormapParam>(); }
-	const GPMColormapParam& GetColormapParam() const { return Get<GPMColormapParam>(); }
+	bool IsPoint() const { return this->Is<PointParam>(); }
+	bool IsVector() const { return this->Is<VectorParam>(); }
+	bool IsFilledCurve() const { return this->Is<FilledCurveParam>(); }
+	bool IsColormap() const { return this->Is<ColormapParam>(); }
+
+	PointParam& GetPointParam() { return this->Get<PointParam>(); }
+	const PointParam& GetPointParam() const { return this->Get<PointParam>(); }
+	VectorParam& GetVectorParam() { return this->Get<VectorParam>(); }
+	const VectorParam& GetVectorParam() const { return this->Get<VectorParam>(); }
+	FilledCurveParam& GetFilledCurveParam() { return this->Get<FilledCurveParam>(); }
+	const FilledCurveParam& GetFilledCurveParam() const { return this->Get<FilledCurveParam>(); }
+	ColormapParam& GetColormapParam() { return this->Get<ColormapParam>(); }
+	const ColormapParam& GetColormapParam() const { return this->Get<ColormapParam>(); }
 };
+
+using GPMGraphParamCM = GPMGraphParamBaseCM<GPMPointParamCM, GPMVectorParamCM, GPMFilledCurveParamCM, GPMColormapParam>;
 
 template <class GraphParam>
 struct GPMPlotBufferCM
@@ -1299,19 +1433,19 @@ struct GPMPlotBufferCM
 
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Vector3DOption)>
 	GPMPlotBufferCM PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom, const std::vector<double>& zfrom,
-								  const std::vector<double>& xlen, const std::vector<double>& ylen, const std::vector<double>& zlen,
-								  Options ...ops);
+								const std::vector<double>& xlen, const std::vector<double>& ylen, const std::vector<double>& zlen,
+								Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Vector3DOption)>
 	GPMPlotBufferCM PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
-								  const std::vector<double>& xlen, const std::vector<double>& ylen,
-								  Options ...ops);
+								const std::vector<double>& xlen, const std::vector<double>& ylen,
+								Options ...ops);
 
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::ColormapOption)>
 	GPMPlotBufferCM PlotColormap(const Matrix<double>& map, const std::vector<double>& x, const std::vector<double>& y,
-								   Options ...ops);
+								 Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::ColormapOption)>
 	GPMPlotBufferCM PlotColormap(const Matrix<double>& map, std::pair<double, double> x, std::pair<double, double> y,
-								   Options ...ops);
+								 Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::ColormapOption)>
 	GPMPlotBufferCM PlotColormap(const std::string& equation, Options ...ops);
 
@@ -1326,6 +1460,7 @@ protected:
 	GPMCanvas* mCanvas;
 };
 
+
 template <class GraphParam, template <class> class Buffer>
 class GPMCanvasCM : public detail::GPM2DAxis<GPMCanvas>
 {
@@ -1333,7 +1468,7 @@ public:
 
 	using _Buffer = Buffer<GraphParam>;
 
-	GPMCanvasCM(const std::string& output);
+	GPMCanvasCM(const std::string& output, double sizex = 0., double sizey = 0.);
 	GPMCanvasCM();
 
 	friend class GPMMultiPlotter;
@@ -1396,6 +1531,49 @@ inline GPMPlotBufferCM<GraphParam>::~GPMPlotBufferCM()
 		mCanvas->Command(InitCommand());
 	}
 }
+struct GetCoordFromVector
+{
+	GetCoordFromVector(const std::vector<double>& x)
+		: x(x), size(x.size())
+	{
+		wmean = (x.back() - x.front()) / (size - 1);
+	}
+	double operator()(size_t i) const
+	{
+		if (i == 0) return x[i] - wmean / 2.;
+		else if (i == size) return x[i - 1] + wmean / 2.;
+		else return (x[i] + x[i - 1]) / 2.;
+	}
+	double center(size_t i) const
+	{
+		return i != size ? x[i] : x[i - 1] + wmean;
+	}
+	const std::vector<double>& x;
+	size_t size;
+	double wmean;
+};
+struct GetCoordFromRange
+{
+	GetCoordFromRange(const std::pair<double, double>& r, size_t size)
+	{
+		this->size = size;
+		width = (r.second - r.first) / (size - 1);
+		min = r.first - width / 2.;
+		cmin = r.first;
+	}
+	double operator()(size_t i) const
+	{
+		return min + i * width;
+	}
+	double center(size_t i) const
+	{
+		return cmin + i * width;
+	}
+	double min;
+	double cmin;
+	size_t size;
+	double width;
+};
 template <class GraphParam>
 inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam& i)
 {
@@ -1440,51 +1618,36 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 			xsize = m.mZMap.GetMatrix().GetSize(0);
 			ysize = m.mZMap.GetMatrix().GetSize(1);
 
-			column = { "1", "2", "3" };
+			column = { "1", "2", "5" };
 			if (m.mXCoord)
 			{
 				const auto& x = m.mXCoord.GetVector();
-				auto getx = [x](int32_t i) { return x[i]; };
+				if (x.size() != xsize) throw InvalidArg("size of x coordinate list and the x size of mat must be the same.");
 				if (m.mYCoord)
 				{
 					const auto& y = m.mYCoord.GetVector();
-					auto gety = [y](int32_t i) { return y[i]; };
-					MakeFile(m.mZMap.GetMatrix(), getx, gety, i.mGraph);
+					if (y.size() != ysize) throw InvalidArg("size of y coordinate list and the y size of mat must be the same.");
+					MakeFile(m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromVector(y), i.mGraph);
 				}
 				else
 				{
-					auto yrange = m.mYRange;
-					double ywidth = yrange.second - yrange.first;
-					auto gety = [yrange, ysize, ywidth](int32_t iy)
-					{
-						return ywidth * iy / ysize + yrange.first;
-					};
-					MakeFile(m.mZMap.GetMatrix(), getx, gety, i.mGraph);
+					auto y = m.mYRange;
+					MakeFile(m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromRange(y, ysize), i.mGraph);
 				}
 			}
 			else
 			{
-				auto xrange = m.mXRange;
-				double xwidth = xrange.second - xrange.first;
-				auto getx = [xrange, xsize, xwidth](int32_t ix)
-				{
-					return xwidth * ix / xsize + xrange.first;
-				};
+				auto x = m.mXRange;
 				if (m.mYCoord)
 				{
 					const auto& y = m.mYCoord.GetVector();
-					auto gety = [y](int32_t i) { return y[i]; };
-					MakeFile(m.mZMap.GetMatrix(), getx, gety, i.mGraph);
+					if (y.size() != ysize) throw InvalidArg("size of y coordinate list and the y size of mat must be the same.");
+					MakeFile(m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromVector(y), i.mGraph);
 				}
 				else
 				{
-					auto yrange = m.mYRange;
-					double ywidth = yrange.second - yrange.first;
-					auto gety = [yrange, ysize, ywidth](int32_t iy)
-					{
-						return ywidth * iy / ysize + yrange.first;
-					};
-					MakeFile(m.mZMap.GetMatrix(), getx, gety, i.mGraph);
+					auto y = m.mYRange;
+					MakeFile(m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromRange(y, ysize), i.mGraph);
 				}
 			}
 		}
@@ -1507,6 +1670,54 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 			//......Gnuplotって背景色設定できるよな？
 			if (m.mZMap.GetType() == 2)
 				column[2] = "($1-$1+" + std::to_string(m.mZMap.GetValue()) + ")";
+		}
+
+		//最後にcontourを作成する。
+		if (m.mWithContour)
+		{
+			mCanvas->Command("set contour base");
+			if (m.mCntrSmooth != CntrSmooth::none)
+			{
+				switch (m.mCntrSmooth)
+				{
+				case CntrSmooth::linear: mCanvas->Command("set cntrparam linear"); break;
+				case CntrSmooth::cubicspline: mCanvas->Command("set cntrparam cubicspline"); break;
+				case CntrSmooth::bspline: mCanvas->Command("set cntrparam bspline"); break;
+				}
+			}
+			if (m.mCntrPoints != -1) mCanvas->Command(Format("set cntrparam points %d", m.mCntrPoints));
+			if (m.mCntrOrder != -1) mCanvas->Command(Format("set cntrparam order %d", m.mCntrOrder));
+
+			if (m.mCntrLevelsAuto != -1)
+			{
+				mCanvas->Command(Format("set cntrparam levels auto %d", m.mCntrLevelsAuto));
+			}
+			else if (!m.mCntrLevelsDiscrete.empty())
+			{
+				std::string str;
+				for (auto x : m.mCntrLevelsDiscrete) str += std::to_string(x) + ", ";
+				str.erase(str.end() - 2, str.end());
+				mCanvas->Command("set cntrparam levels discrete " + str);
+			}
+			else if (m.mCntrLevelsIncremental != std::tuple<double, double, double>{ 0, 0, 0 })
+			{
+				double start, incr, end;
+				std::tie(start, incr, end) = m.mCntrLevelsIncremental;
+				mCanvas->Command(Format("set cntrparam levels incremental %lf, %lf, %lf", start, incr, end));
+			}
+			std::string path = i.mGraph;
+			path.erase(path.end() - 3, path.end());
+			path += "cntr.txt";
+			mCanvas->Command("set pm3d implicit");
+			mCanvas->Command("set contour base");
+			mCanvas->Command("unset surface");
+			mCanvas->Command("set table '" + path + "'");
+			//3:4:column[2]でplotする。
+			mCanvas->Command(Format("splot '%s' using 3:4:%s t '%s'", i.mGraph, column[2], i.mTitle));
+			mCanvas->Command("unset table");
+			mCanvas->Command("set surface");
+			mCanvas->Command("unset contour");
+			mCanvas->Command("unset pm3d");
 		}
 	}
 	else if (i.IsPoint())
@@ -1575,9 +1786,9 @@ PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std
 	GraphParam i;
 	i.AssignPoint();
 	i.mType = GraphParam::DATA;
-	i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
-
+	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	i.SetBaseOptions(ops...);
 	//point
 	auto& p = i.GetPointParam();
 	p.mX = x;
@@ -1594,8 +1805,9 @@ PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options .
 	GraphParam i;
 	i.AssignPoint();
 	i.mType = GraphParam::DATA;
-	i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	i.SetBaseOptions(ops...);
 
 	//point
 	auto& p = i.GetPointParam();
@@ -1613,8 +1825,9 @@ PlotPoints(const std::string& equation, Options ...ops)
 	GraphParam i;
 	i.AssignPoint();
 	i.mType = GraphParam::EQUATION;
-	i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	i.SetBaseOptions(ops...);
 	i.mGraph = equation;
 
 	auto& p = i.GetPointParam();
@@ -1654,8 +1867,9 @@ PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom, 
 	GraphParam i;
 	i.AssignVector();
 	i.mType = GraphParam::DATA;
-	i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	i.SetBaseOptions(ops...);
 
 	//vector
 	auto& v = i.GetVectorParam();
@@ -1678,8 +1892,9 @@ PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
 	GraphParam i;
 	i.AssignVector();
 	i.mType = GraphParam::DATA;
-	i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	i.SetBaseOptions(ops...);
 
 	//vector
 	auto& v = i.GetVectorParam();
@@ -1702,8 +1917,9 @@ PlotColormap(const Matrix<double>& map, const std::vector<double>& x, const std:
 	GraphParam i;
 	i.AssignColormap();
 	i.mType = GraphParam::DATA;
-	i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	i.SetBaseOptions(ops...);
 
 	//map
 	auto& m = i.GetColormapParam();
@@ -1722,8 +1938,9 @@ PlotColormap(const std::string& equation, Options ...ops)
 	i.AssignColormap();
 	i.mGraph = equation;
 	i.mType = GraphParam::DATA;
-	i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	i.SetBaseOptions(ops...);
 
 	//map
 	auto& m = i.GetColormapParam();
@@ -1739,9 +1956,9 @@ PlotColormap(const Matrix<double>& map, std::pair<double, double> x, std::pair<d
 	GraphParam i;
 	i.AssignColormap();
 	i.mType = GraphParam::DATA;
-	i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	//i.mStyle = GetKeywordArg(plot::style, ops..., plot::LINES);
-	i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
+	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
+	i.SetBaseOptions(ops...);
 
 	//map
 	auto& m = i.GetColormapParam();
@@ -1786,6 +2003,8 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p)
 	if (p.IsColormap())
 	{
 		c += " pm3d";
+		auto& m = p.GetColormapParam();
+		if (m.mWithoutSurface) c += " nosurface";
 	}
 	//ベクトルの場合。
 	else if (p.IsVector())
@@ -1801,6 +2020,24 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p)
 	//axis
 	if (!p.mAxis.empty()) c += " axes " + p.mAxis;
 
+	//もしカラーマップでcontourが有効だったら、
+	//更にそれを描画するコマンドを追加する。
+	if (p.IsColormap())
+	{
+		auto& m = p.GetColormapParam();
+		if (m.mWithContour)
+		{
+			std::string str = "'" + p.mGraph;
+			str.erase(str.end() - 3, str.end());
+			c += ", " + str + "cntr.txt' with line";
+			if (p.mTitle == "notitle") c += " notitle";
+			else c += " title '" + p.mTitle + "'";
+			if (m.mCntrLineType != -2) c += Format(" linetype %d", m.mCntrLineType);
+			if (m.mCntrLineWidth != -1) c += Format(" linewidth %lf", m.mCntrLineWidth);
+			if (m.mVariableCntrColor) c += " linecolor palette";
+			else if (!m.mCntrColor.empty()) c += " linecolor " + m.mCntrColor;
+		}
+	}
 	return std::move(c);
 }
 template <class GraphParam>
@@ -1812,18 +2049,21 @@ inline std::string GPMPlotBufferCM<GraphParam>::InitCommand()
 	c += "unset title\n";
 	c += "unset grid\n";
 	c += "set size noratio\n";
-	c += "unset pm3d";
+	c += "unset pm3d\n";
+	c += "unset contour\n";
+	c += "set surface";
 	return std::move(c);
 }
 
 template <class GraphParam, template <class> class Buffer>
-inline GPMCanvasCM<GraphParam, Buffer>::GPMCanvasCM(const std::string& output)
-	: detail::GPM2DAxis<GPMCanvas>(output)
+inline GPMCanvasCM<GraphParam, Buffer>::GPMCanvasCM(const std::string& output, double sizex, double sizey)
+	: detail::GPM2DAxis<GPMCanvas>(output, sizex, sizey)
 {
 	if (mPipe)
 	{
-		Command("set pm3d corners2color c1");
-		Command("set view map");
+		this->Command("set pm3d corners2color c1");
+		this->Command("set view map");
+		//this->SetMargins(1, 1, 1, 1);
 	}
 }
 template <class GraphParam, template <class> class Buffer>
@@ -1831,8 +2071,9 @@ inline GPMCanvasCM<GraphParam, Buffer>::GPMCanvasCM()
 {
 	if (mPipe)
 	{
-		Command("set pm3d corners2color c1");
-		Command("set view map");
+		this->Command("set pm3d corners2color c1");
+		this->Command("set view map");
+		//this->SetMargins(1, 1, 1, 1);
 	}
 }
 
@@ -1938,28 +2179,28 @@ PlotColormap(const std::string& equation, Options ...ops)
 using GPMCanvas2D = detail::GPMCanvas2D<detail::GPMGraphParam2D, detail::GPMPlotBuffer2D>;
 using GPMCanvasCM = detail::GPMCanvasCM<detail::GPMGraphParamCM, detail::GPMPlotBufferCM>;
 
-class GPMMultiPlotter
+class GPMMultiPlot
 {
 public:
-	GPMMultiPlotter(const std::string& outputname, int row, int column);
-	~GPMMultiPlotter();
+	GPMMultiPlot(const std::string& outputname, int row, int column, double sizex = 0., double sizey = 0.);
+	~GPMMultiPlot();
 
-	void Begin(const std::string& output, int row, int column);
+	void Begin(const std::string& output, int row, int column, double sizex = 0., double sizey = 0.);
 	void End();
 
 	void Command(const std::string& c);
 private:
 };
 
-inline GPMMultiPlotter::GPMMultiPlotter(const std::string& output, int row, int column)
+inline GPMMultiPlot::GPMMultiPlot(const std::string& output, int row, int column, double sizex, double sizey)
 {
-	Begin(output, row, column);
+	Begin(output, row, column, sizex, sizey);
 }
-inline GPMMultiPlotter::~GPMMultiPlotter()
+inline GPMMultiPlot::~GPMMultiPlot()
 {
 	End();
 }
-inline void GPMMultiPlotter::Begin(const std::string& output, int row, int column)
+inline void GPMMultiPlot::Begin(const std::string& output, int row, int column, double sizex, double sizey)
 {
 	if (GPMCanvas::Paths<>::msGlobalPipe != nullptr)
 	{
@@ -1980,14 +2221,24 @@ inline void GPMMultiPlotter::Begin(const std::string& output, int row, int colum
 			std::string extension = output.substr(output.size() - 4, 4);
 			std::string repout = ReplaceStr(output, "\\", "/");
 			if (extension == ".png")
-				Command("set terminal pngcairo enhanced size "
-						+ std::to_string(column * 640) + ", " + std::to_string(row * 480) + "\nset output '" + repout + "'");
+			{
+				if (sizex == 0 && sizey == 0) sizex = 800 * column, sizey = 600 * row;
+				Command(Format("set terminal pngcairo enhanced size %d, %d\nset output '%s'", (int)sizex, (int)sizey, repout));
+			}
 			else if (extension == ".eps")
-				Command("set terminal epscairo enhanced size "
-						+ std::to_string(column * 6) + "in, " + std::to_string(row * 4) + "in\nset output '" + repout + "'");
+			{
+				if (sizex == 0 && sizey == 0) sizex = 6 * column, sizey = 4.5 * row;
+				//Command("set terminal epscairo enhanced size "
+				//		+ std::to_string(column * 6) + "in, " + std::to_string(row * 4) + "in\nset output '" + repout + "'");
+				Command(Format("set terminal epscairo enhanced size %lfin, %lfin\nset output '%s'", sizex, sizey, repout));
+			}
 			else if (extension == ".pdf")
-				Command("set terminal pdfcairo enhanced size "
-						+ std::to_string(column * 6) + "in, " + std::to_string(row * 4) + "in\nset output '" + repout + "'");
+			{
+				if (sizex == 0 && sizey == 0) sizex = 6 * column, sizey = 4.5 * row;
+				//Command("set terminal pdfcairo enhanced size "
+				//		+ std::to_string(column * 6) + "in, " + std::to_string(row * 4) + "in\nset output '" + repout + "'");
+				Command(Format("set terminal pdfcairo enhanced size %lfin, %lfin\nset output '%s'", sizex, sizey, repout));
+			}
 		}
 		else if (output == "wxt");
 		else std::cout << "WARNING : " << output << " is not a terminal or has no valid extension. Default terminal is selected." << std::endl;
@@ -1995,7 +2246,7 @@ inline void GPMMultiPlotter::Begin(const std::string& output, int row, int colum
 		Command("set multiplot layout " + std::to_string(row) + ", " + std::to_string(column));
 	}
 }
-inline void GPMMultiPlotter::End()
+inline void GPMMultiPlot::End()
 {
 	if (GPMCanvas::Paths<>::msGlobalPipe != nullptr)
 	{
@@ -2004,7 +2255,7 @@ inline void GPMMultiPlotter::End()
 		GPMCanvas::Paths<>::msGlobalPipe = nullptr;
 	}
 }
-inline void GPMMultiPlotter::Command(const std::string& str)
+inline void GPMMultiPlot::Command(const std::string& str)
 {
 	fprintf(GPMCanvas::Paths<>::msGlobalPipe, (str + "\n").c_str());
 	fflush(GPMCanvas::Paths<>::msGlobalPipe);

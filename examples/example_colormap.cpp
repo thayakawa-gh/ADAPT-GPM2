@@ -5,6 +5,7 @@
 //
 
 #include <ADAPT/GPM2/GPMCanvas.h>
+#include <thread>
 
 using namespace adapt::gpm2;
 
@@ -14,8 +15,12 @@ double r(double x, double y)
 };
 double potential(double x, double y)
 {
-	double p1 = 3 / r(x + 3, y);
-	double p2 = 1 / r(x - 3, y);
+	double r1 = r(x - 3, y);
+	double r2 = r(x + 3, y);
+	if (r1 == 0.) r1 = 0.000001;
+	if (r2 == 0.) r2 = 0.000001;
+	double p1 = 1 / r1;
+	double p2 = 3 / r2;
 	return p1 - p2;
 };
 double fieldx(double x, double y)
@@ -32,59 +37,92 @@ double fieldy(double x, double y)
 }
 int main()
 {
-	//GPMCanvas::SetGnuplotPath("path to gnuplot");
+	//GPMCanvas::SetGnuplotPath("path to gnuplot.exe");
 
-	adapt::Matrix<double> m(200, 200);
-	std::vector<double> xfrom(400), yfrom(400), xlen(400), ylen(400);
-	for (int iy = -100; iy < 100; ++iy)
+	adapt::Matrix<double> m(100, 100);
+	std::pair<double, double> xrange = { -9.9, 9.9 };
+	std::pair<double, double> yrange = { -9.9, 9.9 };
+	for (int iy = -50; iy < 50; ++iy)
 	{
-		double y = iy * 0.1;
-		for (int ix = -100; ix < 100; ++ix)
+		double y = iy * 0.2 + 0.1;
+		for (int ix = -50; ix < 50; ++ix)
 		{
-			double x = ix * 0.1;
-			m[ix + 100][iy + 100] = potential(x, y);
-			if (ix % 10 == 0 && iy % 10 == 0)
-			{
-				int jx = (ix + 100) / 10;
-				int jy = (iy + 100) / 10;
-				xfrom[jy * 20 + jx] = x;
-				yfrom[jy * 20 + jx] = y;
-				double xlen_ = fieldx(x, y);
-				double ylen_ = fieldy(x, y);
-				double len = std::sqrt(xlen_ * xlen_ + ylen_ * ylen_);
-				xlen[jy * 20 + jx] = xlen_ / len * 0.8;
-				ylen[jy * 20 + jx] = ylen_ / len * 0.8;
-			}
+			double x = ix * 0.2 + 0.1;
+			m[ix + 50][iy + 50] = potential(x, y);
+		}
+	}
+	std::vector<double> xfrom(441), yfrom(441), xlen(441), ylen(441);
+	std::vector<double> arrowcolor(441);
+	for (int iy = -10; iy <= 10; ++iy)
+	{
+		for (int ix = -10; ix <= 10; ++ix)
+		{
+			int jx = (ix + 10);
+			int jy = (iy + 10);
+			double xlen_ = fieldx(ix, iy);
+			double ylen_ = fieldy(ix, iy);
+			double len = std::sqrt(xlen_ * xlen_ + ylen_ * ylen_);
+			xlen_ = xlen_ / len * 0.8;
+			ylen_ = ylen_ / len * 0.8;
+			xlen[jy * 21 + jx] = xlen_;
+			ylen[jy * 21 + jx] = ylen_;
+			xfrom[jy * 21 + jx] = ix - xlen_ / 2.;
+			yfrom[jy * 21 + jx] = iy - ylen_ / 2.;
+			arrowcolor[jy * 21 + jx] = potential(ix - xlen_ / 2., iy - ylen_ / 2.);
 		}
 	}
 
 	/* options for Colormap
-	title          ... title.
-	axis           ... set of axes to scale lines. (e.g. plot::axis = "x1y2")
+	title           ... title.
+	axis            ... set of axes to scale lines. (e.g. plot::axis = "x1y2")
+
+	//contour options
+	with_contour    ... plot contour
+	without_surface ... plot without surface. Basically used with "with_contour". 
+	cntrsmooth      ... interpolation by CntrSmooth::linear, cubicspline, bspline
+	cntropints      ... the number of lines for cpline and bspline
+	cntrorder       ... order for bspline, [2, 10]
+	cntrlevels_auto
+	cntrlevels_discrete ... cntrlevels_discrete <z1>, <z2>, ... generate contours at z1, z2, ...
+	cntrlevels_incremental ... cntrlevels_incremental <start>, <incr>, <end> generate contours at start, start+incr, start+2*incr, ...
+	cntrcolor
+	variable_cntrcolor ... color contours with its z value.
+	cntrlinetype    ... linetype. see gnuplot's "linetype" option.
+	cntrlinewidth
 	*/
 
-	/* options for Vectors
-	title          ... title.
-	axis           ... set of axes to scale lines. (e.g. plot::axis = "x1y2")
-	color          ... uniform color.
-	variable_color ... different color at each point.
-	linetype       ... line type. see GNUPLOT's keyword "linetype"
-	linewidth      ... uniform line width.
-	arrowhead      ... arrowhead style. (e.g. plot::arrowhead = ArrowHead::heads + ArrowHead::nofilled)
-	*/
 
-	GPMCanvasCM g("example_colormap.png");
-	g.SetPaletteDefined({ { 0, "cyan" }, { 3.6, "blue" }, { 4., "black" }, { 4.4, "red"}, { 8, "yellow" } });
-	g.SetTitle("example\\_colormap");
-	g.SetSizeRatio(-1);
-	g.SetXLabel("x");
-	g.SetYLabel("y");
-	g.SetXRange(-10, 10);
-	g.SetYRange(-10, 10);
-	g.SetCBRange(-5, 5);
-	std::pair<double, double> xrange = { -10, 10 };
-	std::pair<double, double> yrange = { -10, 10 };
-	g.PlotColormap(m, xrange, yrange, plot::title = "notitle").
+	GPMMultiPlot multi("example_colormap.png", 1, 2, 1200, 600);
+
+	GPMCanvasCM g1("example_colormap_tmpfile");
+	g1.ShowCommands(true);
+	g1.SetTitle("example\\_colormap");
+	g1.SetPaletteDefined({ {0, "yellow" }, { 4.5, "red" }, { 5., "black" }, { 5.5, "blue"}, { 10, "cyan" } });
+	g1.SetSizeRatio(-1);
+	g1.SetXLabel("x");
+	g1.SetYLabel("y");
+	g1.SetXRange(-10, 10);
+	g1.SetYRange(-10, 10);
+	g1.SetCBRange(-5, 5);
+	g1.PlotColormap(m, xrange, yrange, plot::title = "notitle").
 		PlotVectors(xfrom, yfrom, xlen, ylen, plot::title = "notitle", plot::color = "white");
+
+	//sleep for a short time to avoid the output image broken by multiplot.
+	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+	GPMCanvasCM g2("example_colormap_tmpfile");
+	g2.ShowCommands(true);
+	g2.SetTitle("example\\_contour");
+	g2.SetPaletteDefined({ {0, "yellow" }, { 4.5, "red" }, { 5., "black" }, { 5.5, "blue"}, { 10, "cyan" } });
+	g2.SetSizeRatio(-1);
+	g2.SetXLabel("x");
+	g2.SetYLabel("y");
+	g2.SetXRange(-10, 10);
+	g2.SetYRange(-10, 10);
+	g2.SetCBRange(-5, 5);
+	g2.PlotColormap(m, xrange, yrange, plot::title = "notitle",
+					plot::with_contour, plot::without_surface, plot::variable_cntrcolor,
+					plot::cntrlevels_incremental = { -20., 0.2, 20. }).
+		PlotVectors(xfrom, yfrom, xlen, ylen, plot::title = "notitle", plot::variable_color = arrowcolor);
 	return 0;
 }

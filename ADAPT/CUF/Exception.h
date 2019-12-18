@@ -1,4 +1,4 @@
-﻿//
+//
 // Copyright (c) 2017-2019 Hayakawa
 // Released under the 2-Clause BSD license.
 // see https://opensource.org/licenses/BSD-2-Clause
@@ -9,7 +9,6 @@
 
 #include <iostream>
 #include <string>
-#include <ADAPT/CUF/Function.h>
 
 namespace adapt
 {
@@ -21,7 +20,7 @@ inline namespace cuf
 class Exception : public std::exception
 {
 public:
-	Exception(int e) noexcept : std::exception(ToHexString(e).c_str()) {}
+	//Exception(int e) noexcept : std::exception(ToHexString(e).c_str()) {}
 	Exception(const char* c) noexcept : std::exception(c) {}
 	Exception(const std::string& message)  noexcept : std::exception(message.c_str()) {}
 	Exception(std::string&& message)  noexcept : std::exception(std::move(message).c_str()) {}
@@ -33,7 +32,7 @@ public:
 class Exception : public std::exception
 {
 public:
-	Exception(int e)  noexcept : mMessage(ToHexString(e)) {}
+	//Exception(int e)  noexcept : mMessage(ToHexString(e)) {}
 	Exception(const char* c) noexcept : mMessage(c) {}
 	Exception(const std::string& message) noexcept : mMessage(message) {}
 	Exception(std::string&& message) noexcept : mMessage(std::move(message)) {}

@@ -1,4 +1,4 @@
-﻿//
+//
 // Copyright (c) 2017-2019 Hayakawa
 // Released under the 2-Clause BSD license.
 // see https://opensource.org/licenses/BSD-2-Clause
@@ -128,7 +128,7 @@ public:
 	template <class Type>
 	struct TypetoIndex
 	{
-		using F = Find<Type, Types...>;
+		using F = FindType<Type, Types...>;
 		static constexpr std::size_t Index = F::Index;
 		static constexpr bool Exists = F::value;
 	};
@@ -282,25 +282,26 @@ public:
 	std::size_t GetIndex() const { return this->mIndex; }
 	bool IsEmpty() const { return GetIndex() == Size; }
 
-	template <std::size_t Index, EnableIfT<(Index < Size)> = nullptr>
-	IndextoType<Index>& Get()
+	template <std::size_t Index>
+	std::enable_if_t<(Index < Size), IndextoType<Index>>& Get()
 	{
 		if (this->mIndex != Index) throw InvalidType("Bad Variant access");
 		return Storer::Get(Number<Index>(), *this);
 	}
-	template <std::size_t Index, EnableIfT<(Index < Size)> = nullptr>
-	const IndextoType<Index>& Get() const
+	template <std::size_t Index>
+	std::enable_if_t<(Index < Size), const IndextoType<Index>>& Get() const
 	{
 		if (this->mIndex != Index) throw InvalidType("Bad Variant access");
 		return Storer::Get(Number<Index>(), *this);
 	}
-	template <class Type, EnableIfT<TypetoIndex<Type>::Exists> = nullptr>
-	Type& Get()
+
+	template <class Type>
+	std::enable_if_t<TypetoIndex<Type>::Exists, Type>& Get()
 	{
 		return Get<TypetoIndex<Type>::Index>();
 	}
 	template <class Type, EnableIfT<TypetoIndex<Type>::Exists> = nullptr>
-	const Type& Get() const
+	std::enable_if_t<TypetoIndex<Type>::Exists, const Type>& Get() const
 	{
 		return Get<TypetoIndex<Type>::Index>();
 	}
