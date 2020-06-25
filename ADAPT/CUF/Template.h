@@ -366,7 +366,7 @@ struct GetType_T<0, THead, T...>
 #endif
 
 
-#if _MSC_VER <= 1900
+/*#if _MSC_VER <= 1900
 //msvc2015は何故か部分特殊化を正しく認識しない。糞すぎだろ。
 //しかたないのでごまかす。
 namespace detail
@@ -390,7 +390,7 @@ struct FindType_T_impl<N, T, Head>
 template <template <class...> class T, template <class...> class ...Args>
 struct FindType_T : public FindType_T_impl<0, T, Args...>
 {};
-#else
+#else*/
 namespace detail
 {
 template <size_t N, template <class...> class T, template <class...> class ...Body>
@@ -414,7 +414,7 @@ struct FindType_T_impl<N, T>
 template <template <class...> class T, template <class...> class ...Args>
 struct FindType_T : public detail::FindType_T_impl<0, T, Args...>
 {};
-#endif
+//#endif
 
 
 //int型テンプレート引数を一つだけ持つようなクラスを可変長引数テンプレートに与えたいときに、
@@ -709,7 +709,7 @@ decltype(auto) Apply_impl(Func&& f, Tuple&& t, std::index_sequence<Indices...>)
 }
 }
 template <class Func, class Tuple>
-decltype(auto) Apply(Func&& f, Tuple&& t)
+decltype(auto) Apply(Func&& f, Tuple&& t)///
 {
 	return detail::Apply_impl(std::forward<Func>(f), std::forward<Tuple>(t),
 							  std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tuple>>::value>());

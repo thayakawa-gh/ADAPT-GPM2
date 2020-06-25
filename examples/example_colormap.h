@@ -1,8 +1,5 @@
-//
-// Copyright (c) 2017-2019 Hayakawa
-// Released under the 2-Clause BSD license.
-// see https://opensource.org/licenses/BSD-2-Clause
-//
+#ifndef EXAMPLE_COLORMAP_H
+#define EXAMPLE_COLORMAP_H
 
 #include <ADAPT/GPM2/GPMCanvas.h>
 #include <thread>
@@ -35,7 +32,7 @@ double fieldy(double x, double y)
 	double f2 = 3 * y / std::pow(r(x + 3, y), 3);
 	return f1 - f2;
 }
-int main()
+int example_colormap()
 {
 	//GPMCanvas::SetGnuplotPath("path to gnuplot.exe");
 
@@ -126,3 +123,5 @@ int main()
 		PlotVectors(xfrom, yfrom, xlen, ylen, plot::title = "notitle", plot::variable_color = arrowcolor);
 	return 0;
 }
+
+#endif

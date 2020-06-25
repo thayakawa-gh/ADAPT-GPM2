@@ -160,7 +160,7 @@ private:
 		template <class T = Type, EnableIfT<std::is_copy_constructible<T>::value> = nullptr>
 		static void apply(Variant<Types...>& self, const Variant<Types...>& other)
 		{
-			Storer::Assign(self, other.Get<Index>());
+			Storer::Emplace(Number<Index>(), self, other.Get<Index>());
 		}
 		//コピー不可であるときは例外を投げる。
 		template <class T = Type, EnableIfT<!std::is_copy_constructible<T>::value> = nullptr>
@@ -177,7 +177,8 @@ private:
 		template <class T = Type, EnableIfT<std::is_move_constructible<T>::value> = nullptr>
 		static void apply(Variant<Types...>& self, Variant<Types...>&& other)
 		{
-			self = std::move(other.Get<Index>());
+			Storer::Emplace(Number<Index>(), self, std::move(other.Get<Index>()));
+			//self = std::move(other.Get<Index>());
 			other.Destroy();
 		}
 		//ムーブ不可であるときは例外を投げる。
@@ -302,6 +303,28 @@ public:
 	}
 	template <class Type, EnableIfT<TypetoIndex<Type>::Exists> = nullptr>
 	std::enable_if_t<TypetoIndex<Type>::Exists, const Type>& Get() const
+	{
+		return Get<TypetoIndex<Type>::Index>();
+	}
+
+	template <std::size_t Index>
+	std::enable_if_t<(Index < Size), IndextoType<Index>>& Get_unsafe()
+	{
+		return Storer::Get(Number<Index>(), *this);
+	}
+	template <std::size_t Index>
+	std::enable_if_t<(Index < Size), const IndextoType<Index>>& Get_unsafe() const
+	{
+		return Storer::Get(Number<Index>(), *this);
+	}
+
+	template <class Type>
+	std::enable_if_t<TypetoIndex<Type>::Exists, Type>& Get_unsafe()
+	{
+		return Get<TypetoIndex<Type>::Index>();
+	}
+	template <class Type, EnableIfT<TypetoIndex<Type>::Exists> = nullptr>
+	std::enable_if_t<TypetoIndex<Type>::Exists, const Type>& Get_unsafe() const
 	{
 		return Get<TypetoIndex<Type>::Index>();
 	}

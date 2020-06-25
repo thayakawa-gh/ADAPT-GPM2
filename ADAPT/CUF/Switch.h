@@ -74,7 +74,7 @@ Result TabulationSwitch_impl2(Tuple&& t, AIS ais)
 }
 
 template<std::size_t SwitchNum, class Result, template <std::size_t> class Functor, class Tuple, std::size_t ...Indices, class AIS>
-Result TabulationSwitch_impl(std::size_t n, Tuple&& t, std::index_sequence<Indices...> is, AIS ais)
+Result TabulationSwitch_impl(std::size_t n, Tuple&& t, std::index_sequence<Indices...>, AIS ais)
 {
 	Result(*func[SwitchNum])(Tuple&&, AIS) =
 	{

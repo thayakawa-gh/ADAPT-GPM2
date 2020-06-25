@@ -162,19 +162,19 @@ constexpr auto Summation(T&& ...v)
 	return detail::Accumulate_impl(detail::AccPlus(), std::forward<T>(v)...);
 }
 template <class ...T>
-constexpr auto InfiniteProduct(T&& ...v)
+constexpr auto ProductNotation(T&& ...v)
 {
-	return detail::Accumulate_impl(detail::AccPlus(), std::forward<T>(v)...);
+	return detail::Accumulate_impl(detail::AccTimes(), std::forward<T>(v)...);
 }
 template <class ...T>
 constexpr auto AndAll(T&& ...v)
 {
-	return detail::Accumulate_impl(detail::AccPlus(), std::forward<T>(v)...);
+	return detail::Accumulate_impl(detail::AccAnd(), std::forward<T>(v)...);
 }
 template <class ...T>
 constexpr auto OrAll(T&& ...v)
 {
-	return detail::Accumulate_impl(detail::AccPlus(), std::forward<T>(v)...);
+	return detail::Accumulate_impl(detail::AccOr(), std::forward<T>(v)...);
 }
 
 namespace detail

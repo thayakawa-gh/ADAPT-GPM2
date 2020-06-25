@@ -1,4 +1,4 @@
-﻿//
+//
 // Copyright (c) 2017-2019 Hayakawa
 // Released under the 2-Clause BSD license.
 // see https://opensource.org/licenses/BSD-2-Clause
@@ -246,7 +246,7 @@ decltype(auto) GetKeywordArg(Keyword k, Args&& ...args)
 		detail::FindKeyword<Keyword, RemoveCVRefT<Args>...>::Index>::
 		f(k, std::forward<Args>(args)...);
 }
-template <class Keyword, class ...Args>
+/*template <class Keyword, class ...Args>
 decltype(auto) GetKeywordArg(Keyword k, std::tuple<Args...> args)
 {
 	//キーワード引数が与えられている場合に呼ばれる。
@@ -266,7 +266,7 @@ decltype(auto) GetKeywordArg(Keyword k, std::tuple<Args...> args, DEFAULT&& def)
 				 detail::FindKeyword<Keyword, RemoveCVRefT<Args>...>::Index>::
 				 f, std::tuple_cat(std::make_tuple(k), std::forward<std::tuple<Args...>>(args),
 								   std::forward_as_tuple<DEFAULT>(def)));
-}
+}*/
 
 }
 

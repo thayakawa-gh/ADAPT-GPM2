@@ -53,6 +53,12 @@ public:
 	using Exception::Exception;
 	virtual std::string GetErrorMessage() const { return std::string("OUT OF RANGE : ") + what(); }
 };
+class NotInitialized : public Exception
+{
+public:
+	using Exception::Exception;
+	virtual std::string GetErrorMessage() const override { return std::string("NOT INITIALIZED : ") + what(); }
+};
 
 class InvalidArg : public Exception
 {

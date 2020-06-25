@@ -1,8 +1,5 @@
-//
-// Copyright (c) 2017-2019 Hayakawa
-// Released under the 2-Clause BSD license.
-// see https://opensource.org/licenses/BSD-2-Clause
-//
+#ifndef EXAMPLE_FILLEDCURVE_H
+#define EXAMPLE_FILLEDCURVE_H
 
 #include <ADAPT/GPM2/GPMCanvas.h>
 
@@ -18,7 +15,7 @@ struct ChiSquare
 	double k;
 };
 
-int main()
+int example_filledcurve()
 {
 	//GPMCanvas::SetGnuplotPath("path to gnuplot");
 
@@ -70,3 +67,5 @@ int main()
 		PlotFilledCurves(x, y3, plot::title = "k = 3", plot::fillcolor = "green", plot::filltransparent = 0.4);
 	return 0;
 }
+
+#endif

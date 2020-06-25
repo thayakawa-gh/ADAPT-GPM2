@@ -1,18 +1,13 @@
-//
-// Copyright (c) 2017-2019 Hayakawa
-// Released under the 2-Clause BSD license.
-// see https://opensource.org/licenses/BSD-2-Clause
-//
+#ifndef EXAMPLE_2D_H
+#define EXAMPLE_2D_H
 
 #include <ADAPT/GPM2/GPMCanvas.h>
 #include <random>
 
 using namespace adapt::gpm2;
 
-int main()
+int example_2d()
 {
-	//GPMCanvas::SetGnuplotPath("path to gnuplot.exe");
-
 	std::string norm = std::to_string(250. / std::sqrt(2 * 3.1415926535));
 	std::string equation = norm + "*exp(-x*x/2)";
 
@@ -63,3 +58,5 @@ int main()
 				   plot::style = Style::points, plot::pointtype = 7, plot::pointsize = 0.5);
 	return 0;
 }
+
+#endif
