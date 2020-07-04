@@ -1,9 +1,3 @@
-//
-// Copyright (c) 2017-2019 Hayakawa
-// Released under the 2-Clause BSD license.
-// see https://opensource.org/licenses/BSD-2-Clause
-//
-
 #ifndef CUF_VARIANT_H
 #define CUF_VARIANT_H
 

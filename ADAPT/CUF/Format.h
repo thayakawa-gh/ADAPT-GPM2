@@ -1,10 +1,4 @@
 //
-// Copyright (c) 2017-2019 Hayakawa
-// Released under the 2-Clause BSD license.
-// see https://opensource.org/licenses/BSD-2-Clause
-//
-
-//
 // std::string Format(const std::string& format, const Args& ...args);
 // が定義されている。printf風に引数を与えれば良い。
 // フォーマット指定が正しい場合、printf系関数とできるだけ同じ出力になるよう設計されているが、

@@ -2,6 +2,7 @@
 #include "example_colormap.h"
 #include "example_filledcurve.h"
 #include "example_string.h"
+#include "example_for_loop.h"
 
 int main()
 {
@@ -17,4 +18,6 @@ int main()
 	example_filledcurve();
 
 	example_string();
+
+	example_for_loop();
 }

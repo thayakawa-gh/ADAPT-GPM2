@@ -39,13 +39,15 @@ private:
 };
 struct MatrixData
 {
+	enum Type { DBLMAT, COLUMN, UNIQUE, };
+
 	MatrixData() {}
 	MatrixData(const Matrix<double>& matrix) : mVariant(&matrix) {}
 	MatrixData(const std::string& column) : mVariant(&column) {}
 	MatrixData(double value) : mVariant(value) {}
 
 	bool IsEmpty() const { return mVariant.IsEmpty(); }
-	int GetType() const { return mVariant.GetIndex(); }
+	Type GetType() const { return (Type)mVariant.GetIndex(); }
 	const Matrix<double>& GetMatrix() const { return *mVariant.Get<0>(); }
 	const std::string& GetColumn() const { return *mVariant.Get<1>(); }
 	double GetValue() const { return mVariant.Get<2>(); }

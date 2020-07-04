@@ -1,9 +1,3 @@
-//
-// Copyright (c) 2017-2019 Hayakawa
-// Released under the 2-Clause BSD license.
-// see https://opensource.org/licenses/BSD-2-Clause
-//
-
 #ifndef CUF_FUNCTION_H
 #define CUF_FUNCTION_H
 
@@ -14,6 +8,7 @@
 #include <random>
 #include <sstream>
 #include <functional>
+#include <numeric>
 #include <ADAPT/CUF/Template.h>
 
 namespace adapt

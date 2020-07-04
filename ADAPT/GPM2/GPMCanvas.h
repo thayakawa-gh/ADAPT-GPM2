@@ -1,13 +1,5 @@
-//
-// Copyright (c) 2017-2019 Hayakawa
-// Released under the 2-Clause BSD license.
-// see https://opensource.org/licenses/BSD-2-Clause
-//
-
 #ifndef GPM2_GPMCANVAS_H
 #define GPM2_GPMCANVAS_H
-
-
 
 #include <iostream>
 #include <fstream>
@@ -884,7 +876,11 @@ struct GPMPlotBuffer2D
 	GPMPlotBuffer2D(GPMCanvas* g);
 	GPMPlotBuffer2D(const GPMPlotBuffer2D&) = delete;
 	GPMPlotBuffer2D(GPMPlotBuffer2D&& p);
+	GPMPlotBuffer2D& operator=(const GPMPlotBuffer2D&) = delete;
+	GPMPlotBuffer2D& operator=(GPMPlotBuffer2D&& p);
 	virtual ~GPMPlotBuffer2D();
+
+	void Flush();
 
 	template <class Type1, class Type2, class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::PointOption)>
 	GPMPlotBuffer2D PlotPoints(const std::vector<Type1>& x, const std::vector<Type2>& y, Options ...ops);
@@ -906,6 +902,7 @@ struct GPMPlotBuffer2D
 	GPMPlotBuffer2D PlotVectors(const std::vector<Type1>& xfrom, const std::vector<Type2>& yfrom,
 								const std::vector<Type3>& xlen, const std::vector<Type4>& ylen,
 								Options ...ops);
+
 protected:
 
 	GPMPlotBuffer2D Plot(GraphParam& i);
@@ -948,6 +945,8 @@ public:
 	_Buffer PlotFilledCurves(const std::vector<Type1>& x, const std::vector<Type2>& y, const std::vector<Type3>& y2,
 							 Options ...ops);
 
+	_Buffer GetBuffer();
+
 };
 
 template <class GraphParam>
@@ -960,20 +959,30 @@ inline GPMPlotBuffer2D<GraphParam>::GPMPlotBuffer2D(GPMPlotBuffer2D&& p)
 	p.mCanvas = nullptr;
 }
 template <class GraphParam>
+GPMPlotBuffer2D<GraphParam>& GPMPlotBuffer2D<GraphParam>::operator=(GPMPlotBuffer2D<GraphParam>&& p)
+{
+	mCanvas = p.mCanvas; p.mCanvas = nullptr;
+	mParam = std::move(p.mParam);
+	return *this;
+}
+template <class GraphParam>
 inline GPMPlotBuffer2D<GraphParam>::~GPMPlotBuffer2D()
 {
-	//mPipeがnullptrでないときはこのPlotterが最終処理を担当する。
-	if (mCanvas != nullptr)
+	//mCanvasがnullptrでないときはこのPlotBufferが最終処理を担当する。
+	if (mCanvas != nullptr) Flush();
+}
+template <class GraphParam>
+inline void GPMPlotBuffer2D<GraphParam>::Flush()
+{
+	if (mCanvas == nullptr) throw NotInitialized("Buffer is empty");
+	std::string c = "plot";
+	for (auto& i : mParam)
 	{
-		std::string c = "plot";
-		for (auto& i : mParam)
-		{
-			c += PlotCommand(i) + ", ";
-		}
-		c.erase(c.end() - 2, c.end());
-		mCanvas->Command(c);
-		mCanvas->Command(InitCommand());
+		c += PlotCommand(i) + ", ";
 	}
+	c.erase(c.end() - 2, c.end());
+	mCanvas->Command(c);
+	mCanvas->Command(InitCommand());
 }
 template <class GraphParam>
 inline GPMPlotBuffer2D<GraphParam> GPMPlotBuffer2D<GraphParam>::Plot(GraphParam& i)
@@ -1289,6 +1298,11 @@ PlotFilledCurves(const std::vector<Type1>& x, const std::vector<Type2>& y, const
 	_Buffer r(this);
 	return r.PlotFilledCurves(x, y, y2, ops...);
 }
+template <class GraphParam, template <class> class Buffer>
+inline Buffer<GraphParam> GPMCanvas2D<GraphParam, Buffer>::GetBuffer()
+{
+	return _Buffer(this);
+}
 
 }
 
@@ -1443,7 +1457,11 @@ struct GPMPlotBufferCM
 	GPMPlotBufferCM(GPMCanvas* g);
 	GPMPlotBufferCM(const GPMPlotBufferCM&) = delete;
 	GPMPlotBufferCM(GPMPlotBufferCM&& p);
+	GPMPlotBufferCM& operator=(const GPMPlotBufferCM&) = delete;
+	GPMPlotBufferCM& operator=(GPMPlotBufferCM&& p);
 	virtual ~GPMPlotBufferCM();
+
+	void Flush();
 
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
 	GPMPlotBufferCM PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, Options ...ops);
@@ -1531,6 +1549,8 @@ public:
 						   Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::ColormapOption)>
 	_Buffer PlotColormap(const std::string& equation, Options ...ops);
+
+	_Buffer GetBuffer();
 };
 
 template <class GraphParam>
@@ -1543,20 +1563,30 @@ inline GPMPlotBufferCM<GraphParam>::GPMPlotBufferCM(GPMPlotBufferCM&& p)
 	p.mCanvas = nullptr;
 }
 template <class GraphParam>
+inline GPMPlotBufferCM<GraphParam>& GPMPlotBufferCM<GraphParam>::operator=(GPMPlotBufferCM<GraphParam>&& p)
+{
+	mCanvas = p.mCanvas; p.mCanvas = nullptr;
+	mParam = std::move(p.mParam);
+	return *this;
+}
+template <class GraphParam>
 inline GPMPlotBufferCM<GraphParam>::~GPMPlotBufferCM()
 {
 	//mPipeがnullptrでないときはこのPlotterが最終処理を担当する。
-	if (mCanvas != nullptr)
+	if (mCanvas != nullptr) Flush();
+}
+template <class GraphParam>
+inline void GPMPlotBufferCM<GraphParam>::Flush()
+{
+	if (mCanvas == nullptr) throw NotInitialized("Buffer is empty");
+	std::string c = "splot";
+	for (auto& i : mParam)
 	{
-		std::string c = "splot";
-		for (auto& i : mParam)
-		{
-			c += PlotCommand(i) + ", ";
-		}
-		c.erase(c.end() - 2, c.end());
-		mCanvas->Command(c);
-		mCanvas->Command(InitCommand());
+		c += PlotCommand(i) + ", ";
 	}
+	c.erase(c.end() - 2, c.end());
+	mCanvas->Command(c);
+	mCanvas->Command(InitCommand());
 }
 struct GetCoordFromVector
 {
@@ -2207,6 +2237,11 @@ PlotColormap(const std::string& equation, Options ...ops)
 {
 	_Buffer p(this);
 	return p.PlotColormap(equation, ops...);
+}
+template <class GraphParam, template <class> class Buffer>
+Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::GetBuffer()
+{
+	return _Buffer(this);
 }
 
 }
