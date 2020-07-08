@@ -14,4 +14,5 @@ int example_for_loop()
 		buf = buf.PlotPoints(eq, plot::title = eq, plot::style = Style::lines);
 	}
 	buf.Flush();
+	return 0;
 }
