@@ -21,7 +21,7 @@ int example_2d()
 	{
 		double x = nd(mt);
 		if (x < -4.0 || x >= 4.0) continue;
-		++y1[std::floor(x / 0.25) + 16];
+		++y1[static_cast<size_t>(std::floor(x / 0.25) + 16)];
 	}
 	for (int i = 0; i < 32; ++i)
 	{
