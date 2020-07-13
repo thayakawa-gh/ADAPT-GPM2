@@ -1,0 +1,27 @@
+name: MSVC
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: ilammy/msvc-dev-cmd@v1
+    - name: run-cmake
+      uses: lukka/run-cmake@v2
+      env:
+        CC: cl.exe
+        CXX: cl.exe
+      with:
+        cmakeListsOrSettingsJson: CMakeSettingsJson
+        configurationRegexFilter: .*
+        buildDirectory: "${{ github.workspace }}/build"
+    - name: run debug build
+      run: ${{ github.workspace }}/build/x64-Debug/examples/examples.exe
+    - name: run release build
+      run: ${{ github.workspace }}/build/x64-Release/examples/examples.exe

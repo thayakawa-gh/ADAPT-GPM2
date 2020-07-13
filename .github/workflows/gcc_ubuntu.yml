@@ -1,0 +1,23 @@
+name: GCC on Ubuntu
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+    
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: run-cmake
+      uses: lukka/run-cmake@v2
+      with:
+        cmakeListsOrSettingsJson: CMakeSettingsJson
+        configurationRegexFilter: .*
+        buildDirectory: "${{ github.workspace }}/build"
+    - name: run debug build
+      run: ${{ github.workspace }}/build/x64-Debug/examples/examples
+    - name: run release build
+      run: ${{ github.workspace }}/build/x64-Release/examples/examples
