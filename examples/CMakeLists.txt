@@ -1,9 +1,9 @@
 include_directories(../)
 
-add_executable(examples main.cpp example_2d.h example_colormap.h example_filledcurve.h example_string.h example_for_loop.h)
+add_executable(examples main.cpp)
 
-target_compile_options(examples PUBLIC
+target_compile_options(examples PRIVATE
   $<$<CONFIG:Release>:-O2 -W3>
   $<$<CONFIG:Debug>:-W3>
 )
-target_compile_features(examples PUBLIC cxx_std_17)
+target_compile_features(examples PRIVATE cxx_std_17)
