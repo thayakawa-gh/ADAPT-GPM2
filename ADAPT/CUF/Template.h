@@ -246,7 +246,7 @@ namespace detail
 template <size_t Index, class Type>
 struct GetType_impl_s
 {
-	friend Type GetTypeResult(const GetType_impl_s&, std::integral_constant<size_t, Index>);
+	friend Type GetTypeResult(const GetType_impl_s<Index, Type>&, std::integral_constant<size_t, Index>) {}
 };
 template <class, class>
 struct GetType_impl;
@@ -274,7 +274,7 @@ namespace detail
 template <size_t Index, class Type>
 struct FindType_impl_s
 {
-	friend std::integral_constant<size_t, Index> FindResult(const FindType_impl_s&, Identity<Type>);
+	friend std::integral_constant<size_t, Index> FindResult(const FindType_impl_s<Index, Type>&, Identity<Type>) {}
 };
 template <class, class>
 struct FindType_impl;

@@ -60,8 +60,7 @@ struct KeywordName<Name_, AnyTypeKeyword, Tag_>
 	template <class Type>
 	constexpr KeywordValue<Name, Type, Tag> operator=(Type&& v) const
 	{
-		return KeywordValue<Name, Type, Tag>;
-		(std::forward<Type>(v));
+		return KeywordValue<Name, Type, Tag>(std::forward<Type>(v));
 	}
 };
 template <class Name_, class Tag_>

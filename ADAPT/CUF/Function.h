@@ -27,7 +27,7 @@ inline std::string ReplaceStr(const std::string& str, const std::string& from, c
 		res.replace(pos, from.length(), to);
 		pos += to.length();
 	}
-	return std::move(res);
+	return res;
 }
 
 inline std::vector<std::string> SplitStr(const std::string& str)
@@ -36,7 +36,7 @@ inline std::vector<std::string> SplitStr(const std::string& str)
 	std::istringstream ss(str);
 	std::string buffer;
 	while (ss >> buffer) res.push_back(buffer);
-	return std::move(res);
+	return res;
 }
 inline std::vector<std::string> SplitStr(const std::string& str, char delim)
 {
@@ -47,7 +47,7 @@ inline std::vector<std::string> SplitStr(const std::string& str, char delim)
 	{
 		res.push_back(buffer);
 	}
-	return std::move(res);
+	return res;
 }
 
 inline void DelSpace(std::string &str)
@@ -211,7 +211,7 @@ return popen(path, mode); \
 }
 inline int _pclose(FILE* stream)\
 {\
-return _pclose(stream); \
+return pclose(stream); \
 }
 #endif
 

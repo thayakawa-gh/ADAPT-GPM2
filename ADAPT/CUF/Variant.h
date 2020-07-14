@@ -91,7 +91,7 @@ struct VariantStorageSize<>
 template <class ...Types>
 struct VariantStorage
 {
-	template <std::size_t Index, class Storage_, class ...Types>
+	template <std::size_t Index, class Storage_, class ...Types_>
 	friend struct VariantStorer_impl;
 	using StorageSize = VariantStorageSize<Types...>;
 	static constexpr std::size_t Size = sizeof...(Types);

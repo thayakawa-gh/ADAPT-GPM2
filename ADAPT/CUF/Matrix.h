@@ -280,36 +280,36 @@ public:
 	}
 	//std::array<uint32_t, Dim> GetSizes() const { return mSize; }
 
-	template <int Dim, int N, class T, template <class> class Qualifier, bool B = (N == Dim - 1)>
+	template <int N, template <class> class Qualifier, bool B = (N == Dim - 1)>
 	class MatPursuer
 	{
 	public:
-		MatPursuer(Qualifier<Matrix<T, Dim>>& m, std::size_t row) : mMatrix(m), mRow(row) {}
+		MatPursuer(Qualifier<Matrix<T, Dim>>& m, std::size_t row) : mRow(row), mMatrix(m) {}
 
-		template <bool B = std::is_const<MatPursuer<Dim, N - 1, T, Qualifier>>::value>
-		std::enable_if_t<!B, MatPursuer<Dim, N + 1, T, Qualifier>> operator[](uint32_t i)
+		template <bool C = std::is_const<MatPursuer<N - 1, Qualifier>>::value>
+		std::enable_if_t<!C, MatPursuer<N + 1, Qualifier>> operator[](uint32_t i)
 		{
 			assert(i >= 0 && i < mMatrix.GetRange()[N]);
-			return MatPursuer<Dim, N + 1, T, Qualifier>(mMatrix, mRow * mMatrix.GetRange()[N] + i);
+			return MatPursuer<N + 1, Qualifier>(mMatrix, mRow * mMatrix.GetRange()[N] + i);
 		}
 
-		MatPursuer<Dim, N + 1, T, Qualifier> operator[](uint32_t i) const
+		MatPursuer<N + 1, Qualifier> operator[](uint32_t i) const
 		{
 			assert(i >= 0 && i < mMatrix.GetRange()[N]);
-			return MatPursuer<Dim, N + 1, T, Qualifier>(mMatrix, mRow * mMatrix.GetRange()[N] + i);
+			return MatPursuer<N + 1, Qualifier>(mMatrix, mRow * mMatrix.GetRange()[N] + i);
 		}
 	private:
 		std::size_t mRow;
 		Qualifier<Matrix<T, Dim>>& mMatrix;
 	};
-	template <int Dim, int N, class T, template <class> class Qualifier>
-	class MatPursuer<Dim, N, T, Qualifier, true>
+	template <int N, template <class> class Qualifier>
+	class MatPursuer<N, Qualifier, true>
 	{
 	public:
-		MatPursuer(Qualifier<Matrix<T, Dim>>& m, std::size_t row) : mMatrix(m), mRow(row) {}
+		MatPursuer(Qualifier<Matrix<T, Dim>>& m, std::size_t row) : mRow(row), mMatrix(m) {}
 
-		template <bool B = std::is_const<MatPursuer<Dim, N - 1, T, Qualifier>>::value>
-		std::enable_if_t<!B, T&> operator[](uint32_t i)
+		template <bool C = std::is_const<MatPursuer<N - 1, Qualifier>>::value>
+		std::enable_if_t<!C, T&> operator[](uint32_t i)
 		{
 			assert(i >= 0 && i < mMatrix.GetRange()[N]);
 			return mMatrix.mMatrixData[mRow * mMatrix.GetRange()[N] + i];
@@ -327,16 +327,16 @@ public:
 
 	//Dim>1のときはMatPursuerを返す。
 	template <bool B = (Dim > 1)>
-	std::enable_if_t<B, MatPursuer<Dim, 1, T, IdentityT>> operator[](uint32_t i)
+	std::enable_if_t<B, MatPursuer<1, IdentityT>> operator[](uint32_t i)
 	{
 		assert(i >= 0 && i < GetRange()[0]);
-		return MatPursuer<Dim, 1, T, IdentityT>(*this, i);
+		return MatPursuer<1, IdentityT>(*this, i);
 	}
 	template <bool B = (Dim > 1)>
-	std::enable_if_t<B, MatPursuer<Dim, 1, T, std::add_const_t>> operator[](uint32_t i) const
+	std::enable_if_t<B, MatPursuer<1, std::add_const_t>> operator[](uint32_t i) const
 	{
 		assert(i >= 0 && i < GetRange()[0]);
-		return MatPursuer<Dim, 1, T, std::add_const_t>(*this, i);
+		return MatPursuer<1, std::add_const_t>(*this, i);
 	}
 
 	//Dim == 1のときはMatPursuerを介す必要はない。
