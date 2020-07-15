@@ -78,13 +78,13 @@ struct KeywordName<Name_, bool, Tag_>
 
 template <class Keyword, class Arg1,
 	std::enable_if_t<!std::is_constructible<typename Keyword::Type, Arg1>::value, std::nullptr_t> = nullptr>
-	std::remove_reference_t<typename Keyword::Type> GetDefault(Keyword keyword, Arg1&& arg1)
+	std::remove_reference_t<typename Keyword::Type> GetDefault(Keyword /*keyword*/, Arg1&& /*arg1*/)
 {
 	throw InvalidArg("Default value does not exist.");
 }
 template <class Keyword, class Arg1,
 	std::enable_if_t<std::is_constructible<typename Keyword::Type, Arg1>::value, std::nullptr_t> = nullptr>
-	std::remove_reference_t<typename Keyword::Type> GetDefault(Keyword keyword, Arg1&& arg1)
+	std::remove_reference_t<typename Keyword::Type> GetDefault(Keyword /*keyword*/, Arg1&& arg1)
 {
 	return std::forward<Arg1>(arg1);
 }
@@ -219,7 +219,7 @@ bool CUF_TAG_IS_BASE_OF_ARGTAG = (sizeof...(OPTIONS) == 0 ||\
 std::enable_if_t<CUF_TAG_IS_BASE_OF_ARGTAG, std::nullptr_t> = nullptr
 
 template <class Keyword, class ...Args>
-constexpr bool KeywordExists(Keyword, Args&& ...args)
+constexpr bool KeywordExists(Keyword, Args&& .../*args*/)
 {
 	return detail::FindKeyword<Keyword, RemoveCVRefT<Args>...>::value;
 }

@@ -57,7 +57,7 @@ struct VariantStorer_impl<Index, Storage_, Head, Body...> : public VariantStorer
 
 	static void Destroy(Number<Index>, Storage& s)
 	{
-		(*reinterpret_cast<Head*>(&s.mStorage)).~Head();
+		(reinterpret_cast<Head&>(s.mStorage)).~Head();
 		s.mIndex = Storage::Size;
 	}
 	using Base::Destroy;
