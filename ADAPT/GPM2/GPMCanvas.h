@@ -109,9 +109,7 @@ protected:
 	struct Paths
 	{
 		static std::string msGnuplotPath;
-#ifdef _WIN32
 		static const std::string msDefaultGnuplotPath;
-#endif
 		static FILE* msGlobalPipe;//multiplotなどを利用する際のグローバルなパイプ。これがnullptrでない場合、mPipe==mGlobalPipeとなる。
 	};
 };
@@ -338,17 +336,16 @@ inline std::string GPMCanvas::GetGnuplotPath()
 {
 	if (!Paths<>::msGnuplotPath.empty()) return Paths<>::msGnuplotPath;
 	if (const char* p = std::getenv("GNUPLOT_PATH")) return std::string(p);
-#ifdef _WIN32
 	return Paths<>::msDefaultGnuplotPath;
-#else
-	return std::string();
-#endif
 }
 template <class T>
 std::string GPMCanvas::Paths<T>::msGnuplotPath = "";
 #ifdef _WIN32
 template <class T>
 const std::string GPMCanvas::Paths<T>::msDefaultGnuplotPath = "C:/Progra~1/gnuplot/bin/gnuplot.exe";
+#else
+template <class T>
+const std::string GPMCanvas::Paths<T>::msDefaultGnuplotPath = "gnuplot";
 #endif
 template <class T>
 FILE* GPMCanvas::Paths<T>::msGlobalPipe = nullptr;
