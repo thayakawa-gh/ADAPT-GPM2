@@ -60,8 +60,7 @@ struct KeywordName<Name_, AnyTypeKeyword, Tag_>
 	template <class Type>
 	constexpr KeywordValue<Name, Type, Tag> operator=(Type&& v) const
 	{
-		return KeywordValue<Name, Type, Tag>;
-		(std::forward<Type>(v));
+		return KeywordValue<Name, Type, Tag>(std::forward<Type>(v));
 	}
 };
 template <class Name_, class Tag_>
@@ -220,7 +219,7 @@ bool CUF_TAG_IS_BASE_OF_ARGTAG = (sizeof...(OPTIONS) == 0 ||\
 std::enable_if_t<CUF_TAG_IS_BASE_OF_ARGTAG, std::nullptr_t> = nullptr
 
 template <class Keyword, class ...Args>
-constexpr bool KeywordExists(Keyword, Args&& ...)
+constexpr bool KeywordExists(Keyword, Args&& .../*args*/)
 {
 	return detail::FindKeyword<Keyword, RemoveCVRefT<Args>...>::value;
 }

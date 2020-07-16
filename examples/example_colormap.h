@@ -54,8 +54,8 @@ int example_colormap()
 	{
 		for (int ix = -10; ix <= 10; ++ix)
 		{
-			int jx = (ix + 10);
-			int jy = (iy + 10);
+			size_t jx = (ix + 10);
+			size_t jy = (iy + 10);
 			double xlen_ = fieldx(ix, iy);
 			double ylen_ = fieldy(ix, iy);
 			double len = std::sqrt(xlen_ * xlen_ + ylen_ * ylen_);

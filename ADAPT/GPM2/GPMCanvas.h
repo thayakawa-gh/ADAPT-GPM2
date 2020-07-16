@@ -5,6 +5,7 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <cfloat>
 #include <ADAPT/CUF/Matrix.h>
 #include <ADAPT/CUF/KeywordArgs.h>
 #include <ADAPT/CUF/Format.h>
@@ -108,9 +109,7 @@ protected:
 	struct Paths
 	{
 		static std::string msGnuplotPath;
-#ifdef _WIN32
 		static const std::string msDefaultGnuplotPath;
-#endif
 		static FILE* msGlobalPipe;//multiplotなどを利用する際のグローバルなパイプ。これがnullptrでない場合、mPipe==mGlobalPipeとなる。
 	};
 };
@@ -319,7 +318,7 @@ inline const std::string& GPMCanvas::GetOutput() const
 
 inline void GPMCanvas::Command(const std::string& str)
 {
-	fprintf(mPipe, (str + "\n").c_str());
+	fprintf(mPipe, "%s\n", str.c_str());
 	fflush(mPipe);
 	if (mShowCommands) std::cout << str << std::endl;
 }
@@ -337,17 +336,16 @@ inline std::string GPMCanvas::GetGnuplotPath()
 {
 	if (!Paths<>::msGnuplotPath.empty()) return Paths<>::msGnuplotPath;
 	if (const char* p = std::getenv("GNUPLOT_PATH")) return std::string(p);
-#ifdef _WIN32
 	return Paths<>::msDefaultGnuplotPath;
-#else
-	return std::string();
-#endif
 }
 template <class T>
 std::string GPMCanvas::Paths<T>::msGnuplotPath = "";
 #ifdef _WIN32
 template <class T>
 const std::string GPMCanvas::Paths<T>::msDefaultGnuplotPath = "C:/Progra~1/gnuplot/bin/gnuplot.exe";
+#else
+template <class T>
+const std::string GPMCanvas::Paths<T>::msDefaultGnuplotPath = "gnuplot";
 #endif
 template <class T>
 FILE* GPMCanvas::Paths<T>::msGlobalPipe = nullptr;
@@ -493,6 +491,7 @@ std::string PointPlotCommand(const PointParam& p)
 		case Style::fsteps: c += " fsteps"; break;
 		case Style::histeps: c += " histeps"; break;
 		case Style::boxes: c += " boxes"; break;
+		default: break;
 		}
 		if (p.mLineType != -2) c += " linetype " + std::to_string(p.mLineType);
 		if (p.mLineWidth != -1) c += " linewidth " + std::to_string(p.mLineWidth);
@@ -549,9 +548,10 @@ std::string PointPlotCommand(const PointParam& p)
 		case Smooth::acsplines: c += " acsplines"; break;
 		case Smooth::bezier: c += " bezier"; break;
 		case Smooth::sbezier: c += " sbezier"; break;
+		default: break;
 		}
 	}
-	return std::move(c);
+	return c;
 }
 template<class VectorParam>
 std::string VectorPlotCommand(const VectorParam& v)
@@ -571,7 +571,7 @@ std::string VectorPlotCommand(const VectorParam& v)
 	if (v.mLineWidth != -1) c += " linewidth " + std::to_string(v.mLineWidth);
 	if (!v.mColor.empty()) c += " linecolor '" + v.mColor + "'";
 	else if (v.mVariableColor) c += " linecolor palette";
-	return std::move(c);
+	return c;
 }
 template <class FilledCurveParam>
 std::string FilledCurveplotCommand(const FilledCurveParam& f)
@@ -607,12 +607,12 @@ std::string FilledCurveplotCommand(const FilledCurveParam& f)
 		if (!f.mBorderColor.empty()) bd += " linecolor '" + f.mBorderColor + "'";
 		if (!bd.empty()) c += " border" + bd;
 	}
-	return std::move(c);
+	return c;
 }
 template <class GraphParam>
 std::string ColormapPlotCommand(const GraphParam& p)
 {
-
+    return std::string();
 }
 
 #define DEF_GPMAXIS(AXIS, axis)\
@@ -723,8 +723,8 @@ namespace plot = gpm2::plot;
 struct GPMPointParam
 {
 	GPMPointParam()
-		: mLineType(-2), mLineWidth(-1), mPointType(-1), mPointSize(-1),
-		mStyle(Style::none), mSmooth(Smooth::none)
+		: mLineType(-2), mLineWidth(-1),
+		mStyle(Style::none), mPointType(-1), mPointSize(-1), mSmooth(Smooth::none)
 	{}
 
 	template <class ...Ops>
@@ -791,7 +791,8 @@ struct GPMVectorParam
 struct GPMFilledCurveParam
 {
 	GPMFilledCurveParam()
-		: mClosed(false), mAbove(false), mBelow(false), mPattern(-1), mTransparent(-1), mBorderType(-3)
+		: mPattern(-1), mTransparent(-1), mBorderType(-3),
+		mClosed(false), mAbove(false), mBelow(false)
 	{}
 
 	template <class ...Ops>
@@ -954,7 +955,7 @@ inline GPMPlotBuffer2D<GraphParam>::GPMPlotBuffer2D(GPMCanvas* g)
 	: mCanvas(g) {}
 template <class GraphParam>
 inline GPMPlotBuffer2D<GraphParam>::GPMPlotBuffer2D(GPMPlotBuffer2D&& p)
-	: mCanvas(p.mCanvas), mParam(std::move(p.mParam))
+	: mParam(std::move(p.mParam)), mCanvas(p.mCanvas)
 {
 	p.mCanvas = nullptr;
 }
@@ -1192,7 +1193,7 @@ inline std::string GPMPlotBuffer2D<GraphParam>::PlotCommand(const GraphParam& p)
 
 		//using
 		c += " using ";
-		for (int i = 0; i < p.mColumn.size(); ++i)
+		for (size_t i = 0; i < p.mColumn.size(); ++i)
 			c += p.mColumn[i] + ":";
 		c.pop_back();
 	}
@@ -1223,7 +1224,7 @@ inline std::string GPMPlotBuffer2D<GraphParam>::PlotCommand(const GraphParam& p)
 	//axis
 	if (!p.mAxis.empty()) c += " axes " + p.mAxis;
 
-	return std::move(c);
+	return c;
 }
 template <class GraphParam>
 inline std::string GPMPlotBuffer2D<GraphParam>::InitCommand()
@@ -1234,7 +1235,7 @@ inline std::string GPMPlotBuffer2D<GraphParam>::InitCommand()
 	c += "unset title\n";
 	c += "unset grid\n";
 	c += "set size noratio\n";
-	return std::move(c);
+	return c;
 }
 
 template <class GraphParam, template <class> class Buffer>
@@ -1429,24 +1430,24 @@ struct GPMGraphParamBaseCM
 		GPMGraphParamBase<PointParam, VectorParam, FilledCurveParam, ColormapParam>::SetBaseOptions(ops...);
 	}
 
-	void AssignPoint() { this->Emplace<PointParam>(); }
-	void AssignVector() { this->Emplace<VectorParam>(); }
-	void AssignFilledCurve() { this->Emplace<FilledCurveParam>(); }
-	void AssignColormap() { this->Emplace<ColormapParam>(); }
+	void AssignPoint() { this->template Emplace<PointParam>(); }
+	void AssignVector() { this->template Emplace<VectorParam>(); }
+	void AssignFilledCurve() { this->template Emplace<FilledCurveParam>(); }
+	void AssignColormap() { this->template Emplace<ColormapParam>(); }
 
-	bool IsPoint() const { return this->Is<PointParam>(); }
-	bool IsVector() const { return this->Is<VectorParam>(); }
-	bool IsFilledCurve() const { return this->Is<FilledCurveParam>(); }
-	bool IsColormap() const { return this->Is<ColormapParam>(); }
+	bool IsPoint() const { return this->template Is<PointParam>(); }
+	bool IsVector() const { return this->template Is<VectorParam>(); }
+	bool IsFilledCurve() const { return this->template Is<FilledCurveParam>(); }
+	bool IsColormap() const { return this->template Is<ColormapParam>(); }
 
-	PointParam& GetPointParam() { return this->Get<PointParam>(); }
-	const PointParam& GetPointParam() const { return this->Get<PointParam>(); }
-	VectorParam& GetVectorParam() { return this->Get<VectorParam>(); }
-	const VectorParam& GetVectorParam() const { return this->Get<VectorParam>(); }
-	FilledCurveParam& GetFilledCurveParam() { return this->Get<FilledCurveParam>(); }
-	const FilledCurveParam& GetFilledCurveParam() const { return this->Get<FilledCurveParam>(); }
-	ColormapParam& GetColormapParam() { return this->Get<ColormapParam>(); }
-	const ColormapParam& GetColormapParam() const { return this->Get<ColormapParam>(); }
+	PointParam& GetPointParam() { return this->template Get<PointParam>(); }
+	const PointParam& GetPointParam() const { return this->template Get<PointParam>(); }
+	VectorParam& GetVectorParam() { return this->template Get<VectorParam>(); }
+	const VectorParam& GetVectorParam() const { return this->template Get<VectorParam>(); }
+	FilledCurveParam& GetFilledCurveParam() { return this->template Get<FilledCurveParam>(); }
+	const FilledCurveParam& GetFilledCurveParam() const { return this->template Get<FilledCurveParam>(); }
+	ColormapParam& GetColormapParam() { return this->template Get<ColormapParam>(); }
+	const ColormapParam& GetColormapParam() const { return this->template Get<ColormapParam>(); }
 };
 
 using GPMGraphParamCM = GPMGraphParamBaseCM<GPMPointParamCM, GPMVectorParamCM, GPMFilledCurveParamCM, GPMColormapParam>;
@@ -1558,7 +1559,7 @@ inline GPMPlotBufferCM<GraphParam>::GPMPlotBufferCM(GPMCanvas* g)
 	: mCanvas(g) {}
 template <class GraphParam>
 inline GPMPlotBufferCM<GraphParam>::GPMPlotBufferCM(GPMPlotBufferCM&& p)
-	: mCanvas(p.mCanvas), mParam(std::move(p.mParam))
+	: mParam(std::move(p.mParam)), mCanvas(p.mCanvas)
 {
 	p.mCanvas = nullptr;
 }
@@ -1747,6 +1748,7 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 				case CntrSmooth::linear: mCanvas->Command("set cntrparam linear"); break;
 				case CntrSmooth::cubicspline: mCanvas->Command("set cntrparam cubicspline"); break;
 				case CntrSmooth::bspline: mCanvas->Command("set cntrparam bspline"); break;
+				default: break;
 				}
 			}
 			if (m.mCntrPoints != -1) mCanvas->Command(Format("set cntrparam points %d", m.mCntrPoints));
@@ -2051,7 +2053,7 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p)
 
 		//using
 		c += " using ";
-		for (int i = 0; i < p.mColumn.size(); ++i)
+		for (size_t i = 0; i < p.mColumn.size(); ++i)
 			c += p.mColumn[i] + ":";
 		c.pop_back();
 	}
@@ -2103,7 +2105,7 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p)
 			else if (!m.mCntrColor.empty()) c += " linecolor '" + m.mCntrColor + "'";
 		}
 	}
-	return std::move(c);
+	return c;
 }
 template <class GraphParam>
 inline std::string GPMPlotBufferCM<GraphParam>::InitCommand()
@@ -2117,7 +2119,7 @@ inline std::string GPMPlotBufferCM<GraphParam>::InitCommand()
 	c += "unset pm3d\n";
 	c += "unset contour\n";
 	c += "set surface";
-	return std::move(c);
+	return c;
 }
 
 template <class GraphParam, template <class> class Buffer>
@@ -2327,7 +2329,7 @@ inline void GPMMultiPlot::End()
 }
 inline void GPMMultiPlot::Command(const std::string& str)
 {
-	fprintf(GPMCanvas::Paths<>::msGlobalPipe, (str + "\n").c_str());
+	fprintf(GPMCanvas::Paths<>::msGlobalPipe, "%s\n", str.c_str());
 	fflush(GPMCanvas::Paths<>::msGlobalPipe);
 }
 

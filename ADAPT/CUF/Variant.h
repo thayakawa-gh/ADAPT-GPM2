@@ -57,7 +57,7 @@ struct VariantStorer_impl<Index, Storage_, Head, Body...> : public VariantStorer
 
 	static void Destroy(Number<Index>, Storage& s)
 	{
-		(*reinterpret_cast<Head*>(&s.mStorage)).~Head();
+		(reinterpret_cast<Head&>(s.mStorage)).~Head();
 		s.mIndex = Storage::Size;
 	}
 	using Base::Destroy;
@@ -91,7 +91,7 @@ struct VariantStorageSize<>
 template <class ...Types>
 struct VariantStorage
 {
-	template <std::size_t Index, class Storage_, class ...Types>
+	template <std::size_t Index, class Storage_, class ...Types_>
 	friend struct VariantStorer_impl;
 	using StorageSize = VariantStorageSize<Types...>;
 	static constexpr std::size_t Size = sizeof...(Types);

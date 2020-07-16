@@ -441,8 +441,8 @@ void AddArg(std::string& result, std::string::const_iterator& it, const std::str
 inline void AddArg(std::string& result, std::string::const_iterator& it, const std::string::const_iterator& itend)
 {
 	std::ostringstream str;
-	char mod = 0;
-	mod = Parse(str, it, itend);
+	//char mod = 0;
+	/*mod = */Parse(str, it, itend);
 	if (it != itend)
 	{
 		str << "!NO_ARGUMENTS!";
@@ -505,7 +505,7 @@ std::string Format(const std::string& format, const Values& ...values)
 	std::string::const_iterator itend = format.end();
 	std::string result;
 	detail::Format_impl(result, it, itend, values...);
-	return std::move(result);
+	return result;
 }
 
 }

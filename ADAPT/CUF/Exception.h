@@ -32,8 +32,8 @@ public:
 	Exception(std::string&& message) noexcept : mMessage(std::move(message)) {}
 	virtual ~Exception() = default;
 
-	virtual const char* what() const { return mMessage.c_str(); }
-	std::string GetErrorMessage() const { return mMessage; }
+	virtual const char* what() const noexcept { return mMessage.c_str(); }
+	std::string GetErrorMessage() const noexcept { return mMessage; }
 
 protected:
 	std::string mMessage;
@@ -45,32 +45,32 @@ class OutOfRange : public Exception
 {
 public:
 	using Exception::Exception;
-	virtual std::string GetErrorMessage() const { return std::string("OUT OF RANGE : ") + what(); }
+	virtual std::string GetErrorMessage() const noexcept { return std::string("OUT OF RANGE : ") + what(); }
 };
 class NotInitialized : public Exception
 {
 public:
 	using Exception::Exception;
-	virtual std::string GetErrorMessage() const override { return std::string("NOT INITIALIZED : ") + what(); }
+	virtual std::string GetErrorMessage() const noexcept { return std::string("NOT INITIALIZED : ") + what(); }
 };
 
 class InvalidArg : public Exception
 {
 public:
 	using Exception::Exception;
-	virtual std::string GetErrorMessage() const override { return std::string("INVALID ARG : ") + what(); }
+	virtual std::string GetErrorMessage() const noexcept { return std::string("INVALID ARG : ") + what(); }
 };
 class InvalidType : public Exception
 {
 public:
 	using Exception::Exception;
-	virtual std::string GetErrorMessage() const override { return std::string("INVALID TYPE : ") + what(); }
+	virtual std::string GetErrorMessage() const noexcept { return std::string("INVALID TYPE : ") + what(); }
 };
 class InvalidValue : public Exception
 {
 public:
 	using Exception::Exception;
-	virtual std::string GetErrorMessage() const override { return std::string("INVALID VALUE : ") + what(); }
+	virtual std::string GetErrorMessage() const noexcept { return std::string("INVALID VALUE : ") + what(); }
 };
 
 }
