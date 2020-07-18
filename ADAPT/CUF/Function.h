@@ -9,6 +9,7 @@
 #include <sstream>
 #include <functional>
 #include <numeric>
+#include <algorithm>
 #include <ADAPT/CUF/Template.h>
 
 namespace adapt
