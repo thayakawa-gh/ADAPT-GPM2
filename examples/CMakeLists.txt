@@ -8,4 +8,4 @@ target_compile_options(examples PRIVATE
     $<$<CXX_COMPILER_ID:Clang>:-Wall>
     $<$<CXX_COMPILER_ID:MSVC>:-W4>
 )
-target_compile_features(examples PRIVATE cxx_std_17)
+target_compile_features(examples PRIVATE cxx_std_14)
