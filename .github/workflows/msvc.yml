@@ -25,5 +25,20 @@ jobs:
         buildDirectory: "${{ github.workspace }}/build"
     - name: run debug build
       run: ${{ github.workspace }}/build/x64-Debug/examples/examples.exe
+    - name: copy result files of debug build
+      run: >-
+        mkdir -p msvc/debug &&
+        copy *.png msvc/debug &&
+        copy *.txt msvc/debug
     - name: run release build
       run: ${{ github.workspace }}/build/x64-Release/examples/examples.exe
+    - name: copy result files of release build
+      run: >-
+        mkdir -p msvc/release &&
+        copy *.png msvc/release &&
+        copy *.txt msvc/release
+    - name: upload result files
+      uses: actions/upload-artifact@v1
+      with:
+        name: msvc_${{ github.sha }}
+        path: msvc
