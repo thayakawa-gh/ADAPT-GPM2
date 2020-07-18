@@ -208,32 +208,6 @@ template <class ...T>
 struct TypeList;
 template <template <class...> class ...T>
 struct UnarguedList;
-/*template <std::size_t N, class Type, class ...Args>
-struct Find_impl;
-template <std::size_t N, class Type, class ArgHead, class ...Args>
-struct Find_impl<N, Type, ArgHead, Args...>
-{
-	static constexpr std::size_t Index = Find_impl<N + 1, Type, Args...>::Index;
-	static constexpr bool value = Find_impl<N + 1, Type, Args...>::value;
-};
-template <std::size_t N, class Type, class ...Args>
-struct Find_impl<N, Type, Type, Args...>
-{
-	static constexpr std::size_t Index = N;
-	static constexpr bool value = true;
-};
-template <std::size_t N, class Type>
-struct Find_impl<N, Type>
-{
-	static constexpr std::size_t Index = std::numeric_limits<std::size_t>::max();
-	static constexpr bool value = false;
-};
-template <class Type, class ...Args>
-struct Find : public Find_impl<0, Type, Args...>
-{};
-template <class Type, class ...Args>
-struct Find<Type, TypeList<Args...>> : public Find<Type, Args...>
-{};*/
 
 template <size_t N>
 struct Number
@@ -359,32 +333,6 @@ struct GetType_T<0, THead, T...>
 };
 #endif
 
-
-/*#if _MSC_VER <= 1900
-//msvc2015は何故か部分特殊化を正しく認識しない。糞すぎだろ。
-//しかたないのでごまかす。
-namespace detail
-{
-template <size_t N, template <class...> class T, template <class...> class Head, template <class...> class ...Body>
-struct FindType_T_impl : public FindType_T_impl<N + 1, T, Body...>
-{};
-template <size_t N, template <class...> class T, template <class...> class ...Body>
-struct FindType_T_impl<N, T, T, Body...>
-{
-	static constexpr bool value = true;
-	static constexpr size_t Index = N;
-};
-template <size_t N, template <class...> class T, template <class...> class Head>
-struct FindType_T_impl<N, T, Head>
-{
-	static constexpr bool value = std::is_same<T, Head>::value;
-	static constexpr size_t Index = value ? N : std::numeric_limits<size_t>::max();
-};
-}
-template <template <class...> class T, template <class...> class ...Args>
-struct FindType_T : public FindType_T_impl<0, T, Args...>
-{};
-#else*/
 namespace detail
 {
 template <size_t N, template <class...> class T, template <class...> class ...Body>
@@ -585,10 +533,6 @@ using Conjunction = AndOperationSeq<B...>;
 
 template <bool B>
 using EnableIfT = std::enable_if_t<B, std::nullptr_t>;
-
-//VS2015は変数テンプレート未対応。糞食らえ。
-//template <bool ...V>
-//constexpr bool AndOperationSeq_v = AndOperationSeq<V...>::Value;
 
 //受け取った全てのbool値についてOr演算を行う。
 //いずれか一つでもtrueであった場合、Valueはtrueとなる。

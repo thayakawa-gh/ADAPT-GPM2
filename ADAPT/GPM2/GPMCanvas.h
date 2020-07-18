@@ -93,11 +93,6 @@ public:
 	void ShowCommands(bool b);
 
 	static void SetGnuplotPath(const std::string& path);
-	//GnuplotPathは
-	//1.SetGnuplotPathで設定されているなら、その値。
-	//2.環境変数GNUPLOT_PATHがあれば、その値。
-	//3.windowsの場合、"C:/PROGRA~2/gnuplot/bin/gnuplot.exe"
-	//の優先度で取得する。
 	static std::string GetGnuplotPath();
 
 protected:
@@ -1397,9 +1392,6 @@ struct GPMColormapParam
 		mCntrLineWidth = GetKeywordArg(plot::cntrlinewidth, ops..., -1.);
 	}
 	//ColormapOption
-	//int mThinout;//要素ごとにプロットするときに、ビンあたりの要素がこの値を超えている場合、乱数でこの数程度になるように間引く。
-	//int mEntry;//COLLECTIONのとき、値が-1でなければタイトルにエントリー数を追加する。
-	//size_t mNormalize;//-1なら規格化しない。
 	plot::ArrayData mXCoord;
 	plot::ArrayData mYCoord;
 	std::pair<double, double> mXRange;
@@ -1853,8 +1845,6 @@ PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std
 	GraphParam i;
 	i.AssignPoint();
 	i.mType = GraphParam::DATA;
-	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
 	i.SetBaseOptions(ops...);
 	//point
 	auto& p = i.GetPointParam();
@@ -1872,8 +1862,6 @@ PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options .
 	GraphParam i;
 	i.AssignPoint();
 	i.mType = GraphParam::DATA;
-	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
 	i.SetBaseOptions(ops...);
 
 	//point
@@ -1892,8 +1880,6 @@ PlotPoints(const std::string& equation, Options ...ops)
 	GraphParam i;
 	i.AssignPoint();
 	i.mType = GraphParam::EQUATION;
-	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
 	i.SetBaseOptions(ops...);
 	i.mGraph = equation;
 
@@ -1934,8 +1920,6 @@ PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom, 
 	GraphParam i;
 	i.AssignVector();
 	i.mType = GraphParam::DATA;
-	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
 	i.SetBaseOptions(ops...);
 
 	//vector
@@ -1959,8 +1943,6 @@ PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
 	GraphParam i;
 	i.AssignVector();
 	i.mType = GraphParam::DATA;
-	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
 	i.SetBaseOptions(ops...);
 
 	//vector
@@ -1984,8 +1966,6 @@ PlotColormap(const Matrix<double>& map, const std::vector<double>& x, const std:
 	GraphParam i;
 	i.AssignColormap();
 	i.mType = GraphParam::DATA;
-	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
 	i.SetBaseOptions(ops...);
 
 	//map
@@ -2005,8 +1985,6 @@ PlotColormap(const std::string& equation, Options ...ops)
 	i.AssignColormap();
 	i.mGraph = equation;
 	i.mType = GraphParam::DATA;
-	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
 	i.SetBaseOptions(ops...);
 
 	//map
@@ -2023,8 +2001,6 @@ PlotColormap(const Matrix<double>& map, std::pair<double, double> x, std::pair<d
 	GraphParam i;
 	i.AssignColormap();
 	i.mType = GraphParam::DATA;
-	//i.mTitle = GetKeywordArg(plot::title, ops..., "");
-	//i.mAxis = GetKeywordArg(plot::axis, ops..., "");
 	i.SetBaseOptions(ops...);
 
 	//map
@@ -2130,7 +2106,6 @@ inline GPMCanvasCM<GraphParam, Buffer>::GPMCanvasCM(const std::string& output, d
 	{
 		this->Command("set pm3d corners2color c1");
 		this->Command("set view map");
-		//this->SetMargins(1, 1, 1, 1);
 	}
 }
 template <class GraphParam, template <class> class Buffer>
@@ -2140,7 +2115,6 @@ inline GPMCanvasCM<GraphParam, Buffer>::GPMCanvasCM()
 	{
 		this->Command("set pm3d corners2color c1");
 		this->Command("set view map");
-		//this->SetMargins(1, 1, 1, 1);
 	}
 }
 
@@ -2300,15 +2274,11 @@ inline void GPMMultiPlot::Begin(const std::string& output, int row, int column, 
 			else if (extension == ".eps")
 			{
 				if (sizex == 0 && sizey == 0) sizex = 6 * column, sizey = 4.5 * row;
-				//Command("set terminal epscairo enhanced size "
-				//		+ std::to_string(column * 6) + "in, " + std::to_string(row * 4) + "in\nset output '" + repout + "'");
 				Command(Format("set terminal epscairo enhanced size %lfin, %lfin\nset output '%s'", sizex, sizey, repout));
 			}
 			else if (extension == ".pdf")
 			{
 				if (sizex == 0 && sizey == 0) sizex = 6 * column, sizey = 4.5 * row;
-				//Command("set terminal pdfcairo enhanced size "
-				//		+ std::to_string(column * 6) + "in, " + std::to_string(row * 4) + "in\nset output '" + repout + "'");
 				Command(Format("set terminal pdfcairo enhanced size %lfin, %lfin\nset output '%s'", sizex, sizey, repout));
 			}
 		}

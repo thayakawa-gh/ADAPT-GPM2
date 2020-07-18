@@ -17,8 +17,6 @@ struct ChiSquare
 
 int example_filledcurve()
 {
-	//GPMCanvas::SetGnuplotPath("path to gnuplot");
-
 	std::vector<double> x(401, 0);
 	std::vector<double> y1(401, 0);
 	std::vector<double> y2(401, 0);

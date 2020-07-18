@@ -34,8 +34,6 @@ double fieldy(double x, double y)
 }
 int example_colormap()
 {
-	//GPMCanvas::SetGnuplotPath("path to gnuplot.exe");
-
 	adapt::Matrix<double> m(100, 100);
 	std::pair<double, double> xrange = { -9.9, 9.9 };
 	std::pair<double, double> yrange = { -9.9, 9.9 };

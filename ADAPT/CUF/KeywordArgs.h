@@ -239,27 +239,6 @@ decltype(auto) GetKeywordArg(Keyword k, Args&& ...args)
 		detail::FindKeyword<Keyword, RemoveCVRefT<Args>...>::Index>::
 		f(k, std::forward<Args>(args)...);
 }
-/*template <class Keyword, class ...Args>
-decltype(auto) GetKeywordArg(Keyword k, std::tuple<Args...> args)
-{
-	//キーワード引数が与えられている場合に呼ばれる。
-	//該当するキーワードから値を取り出して返す。
-	//同じキーワードが複数与えられている場合、先のもの（左にあるもの）が優先される。
-	return Apply(detail::GetKeywordArg_impl<
-				 detail::FindKeyword<Keyword, RemoveCVRefT<Args>...>::Index>::
-				 f, std::tuple_cat(std::make_tuple(k), std::forward<std::tuple<Args...>>(args)));
-}
-template <class Keyword, class ...Args, class DEFAULT>
-decltype(auto) GetKeywordArg(Keyword k, std::tuple<Args...> args, DEFAULT&& def)
-{
-	//キーワード引数が与えられている場合に呼ばれる。
-	//該当するキーワードから値を取り出して返す。
-	//同じキーワードが複数与えられている場合、先のもの（左にあるもの）が優先される。
-	return Apply(detail::GetKeywordArg_impl<
-				 detail::FindKeyword<Keyword, RemoveCVRefT<Args>...>::Index>::
-				 f, std::tuple_cat(std::make_tuple(k), std::forward<std::tuple<Args...>>(args),
-								   std::forward_as_tuple<DEFAULT>(def)));
-}*/
 
 }
 

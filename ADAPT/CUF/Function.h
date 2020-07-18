@@ -76,13 +76,6 @@ std::vector<Type> UniqueRandom(Type min, Type max, Type num)
 	r.erase(r.begin() + num, r.end());
 	return r;
 }
-/*template <int Size, class ...Args>
-std::string Format(const char(&format)[Size], Args&& ...args)
-{
-	char buf[2 * Size + 256];
-	sprintf(buf, format, std::forward<Args>(args)...);
-	return std::string(buf);
-}*/
 
 template <class T, std::enable_if_t<std::is_arithmetic<T>::value, std::nullptr_t> = nullptr>
 std::string ToHexString(T value)
