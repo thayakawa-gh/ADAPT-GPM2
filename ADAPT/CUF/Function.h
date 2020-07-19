@@ -100,7 +100,6 @@ std::string ToString(T value)
 	std::ostringstream os;
 	os << std::dec << value;
 	return os.str();
-	std::is_convertible<const char*, std::string>::value;
 }
 template <class T, std::enable_if_t<std::is_convertible<T, std::string>::value, std::nullptr_t> = nullptr>
 std::string ToString(const T& c)
