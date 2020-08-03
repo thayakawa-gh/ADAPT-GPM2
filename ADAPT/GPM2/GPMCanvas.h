@@ -330,7 +330,14 @@ inline void GPMCanvas::SetGnuplotPath(const std::string& path)
 inline std::string GPMCanvas::GetGnuplotPath()
 {
 	if (!Paths<>::msGnuplotPath.empty()) return Paths<>::msGnuplotPath;
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif 
 	if (const char* p = std::getenv("GNUPLOT_PATH")) return std::string(p);
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 	return Paths<>::msDefaultGnuplotPath;
 }
 template <class T>
