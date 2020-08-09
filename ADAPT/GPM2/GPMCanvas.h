@@ -590,8 +590,8 @@ std::string FilledCurveplotCommand(const FilledCurveParam& f)
 	else if (f.mVariableColor) c += " fillcolor palette";
 	{
 		std::string fs;
-		if (f.mTransparent != -1 && f.mPattern == -1) fs += Format(" transparent solid %lf", f.mTransparent);
-		else if (f.mTransparent != -1 && f.mPattern != -1) fs += Format(" transparent pattern %d", f.mPattern);
+		if (f.mTransparent) fs += " transparent";
+		if (f.mSolid != -1) fs += Format(" solid %lf", f.mSolid);
 		else if (f.mPattern != -1) fs += Format(" pattern %d", f.mPattern);
 		if (!fs.empty()) c += " fillstyle" + fs;
 	}
@@ -696,7 +696,8 @@ CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(ylen, ArrayData, VectorOption)
 CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(arrowhead, int, VectorOption)
 
 CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(fillpattern, int, FillOption)
-CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(filltransparent, double, FillOption)
+CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(fillsolid, double, FillOption)
+CUF_DEFINE_TAGGED_KEYWORD_OPTION(filltransparent, FillOption)
 CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(fillcolor, const std::string&, FillOption)
 CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(variable_fillcolor, const std::string&, FillOption)
 CUF_DEFINE_TAGGED_KEYWORD_OPTION_WITH_VALUE(bordercolor, const std::string&, FillOption)
@@ -786,7 +787,7 @@ struct GPMVectorParam
 struct GPMFilledCurveParam
 {
 	GPMFilledCurveParam()
-		: mPattern(-1), mTransparent(-1), mBorderType(-3),
+		: mPattern(-1), mSolid(-1), mTransparent(false), mBorderType(-3),
 		mClosed(false), mAbove(false), mBelow(false)
 	{}
 
@@ -799,7 +800,8 @@ struct GPMFilledCurveParam
 		mFillColor = GetKeywordArg(plot::fillcolor, ops..., "");
 		if (KeywordExists(plot::variable_fillcolor, ops...)) mVariableColor = GetKeywordArg(plot::variable_fillcolor, ops...);
 		mPattern = GetKeywordArg(plot::fillpattern, ops..., -1);
-		mTransparent = GetKeywordArg(plot::filltransparent, ops..., -1);
+		mSolid = GetKeywordArg(plot::fillsolid, ops..., -1.);
+		mTransparent = KeywordExists(plot::filltransparent, ops...);
 		mBorderColor = GetKeywordArg(plot::bordercolor, ops..., "");
 		mBorderType = GetKeywordArg(plot::bordertype, ops..., -3);
 	}
@@ -809,7 +811,8 @@ struct GPMFilledCurveParam
 	plot::ArrayData mVariableColor;
 	std::string mBaseline;
 	int mPattern;
-	double mTransparent;
+	double mSolid;
+	bool mTransparent;
 	std::string mBorderColor;
 	int mBorderType;//-2はnorborderを意味する。
 

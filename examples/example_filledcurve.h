@@ -41,12 +41,13 @@ int example_filledcurve()
 	 * options for FilledCurves
 	title          ... title.
 	axis           ... set of axes to scale lines. (e.g. plot::axis = "x1y2")
-	fillpattern
-	filltransparent
-	fillcolor
-	variable_fillcolor
-	bordercolor
-	bordertype
+	fillpattern    ... fill with a colored pattern.
+	fillsolid      ... fill with a solid color specified by fillcolor with density [ 0.0, 1.0 ].
+	filltransparent... make the filled area transparent to the background color.
+	fillcolor      ... specify the color of filled area.
+	variable_fillcolor ... 
+	bordercolor    ... specify the color of the border.
+	bordertype     ... specify the type of the border.
 	baseline       ... the area between the curve this line is filled. (e.g. plot::baseline = "y=10")
 	closed         ... the points are treated as a closed polygon and its inside is filled.
 	above          ... the filled area is limited to the above side of baseline or y2 curve.
@@ -60,9 +61,12 @@ int example_filledcurve()
 	g.SetYRange(0, 1.0);
 	g.SetXLabel("x");
 	g.SetYLabel("y");
-	g.PlotFilledCurves(x, y1, plot::title = "k = 1", plot::fillcolor = "red", plot::filltransparent = 0.4).
-		PlotFilledCurves(x, y2, plot::title = "k = 2", plot::fillcolor = "blue", plot::filltransparent = 0.4).
-		PlotFilledCurves(x, y3, plot::title = "k = 3", plot::fillcolor = "green", plot::filltransparent = 0.4);
+	g.PlotFilledCurves(x, y1, plot::title = "k = 1",
+					   plot::fillcolor = "red", plot::fillsolid = 0.4, plot::filltransparent).
+		PlotFilledCurves(x, y2, plot::title = "k = 2",
+						 plot::fillcolor = "blue", plot::fillsolid = 0.4, plot::filltransparent).
+		PlotFilledCurves(x, y3, plot::title = "k = 3",
+						 plot::fillcolor = "green", plot::fillsolid = 0.4, plot::filltransparent);
 	return 0;
 }
 
