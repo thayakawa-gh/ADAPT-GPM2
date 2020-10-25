@@ -378,26 +378,29 @@ namespace detail
 
 using DataIterator = Variant<std::vector<double>::const_iterator, std::vector<std::string>::const_iterator>;
 
-inline void MakeFile(std::vector<DataIterator>& its, size_t size, const std::string& filename)
+inline std::string MakeDataBlock(std::vector<DataIterator>& its, size_t size, const std::string& variable_name)
 {
-	auto f = Overload([](std::vector<double>::const_iterator& it, std::ofstream& ofs) { ofs << " " << *it; ++it; },
-					  [](std::vector<std::string>::const_iterator& it, std::ofstream& ofs) { ofs << " " << *it; ++it; });
-	std::ofstream ofs(filename);
-	if (!ofs) throw InvalidArg("file \"" + filename + "\" cannot open.");
+	auto f = Overload([](std::vector<double>::const_iterator& it, std::ostringstream& oss) { oss << " " << *it; ++it; },
+		[](std::vector<std::string>::const_iterator& it, std::ostringstream& oss) { oss << " " << *it; ++it; });
+	std::ostringstream oss;
+	oss << variable_name + " << EOD\n";
 	for (size_t i = 0; i < size; ++i)
 	{
 		for (auto& it : its)
 		{
-			it.Visit(f, ofs);
+			it.Visit(f, oss);
 		}
-		ofs << "\n";
+		oss << "\n";
 	}
+	oss << "EOD\n";
+	return oss.str();
 }
+
 template <class GetX, class GetY>
-inline void MakeFile(const Matrix<double>& map, GetX getx, GetY gety, const std::string& filename)
+inline std::string MakeDataBlock(const Matrix<double>& map, GetX getx, GetY gety, const std::string& variable_name)
 {
-	std::ofstream ofs(filename);
-	if (!ofs) throw InvalidArg("file \"" + filename + "\" cannot open.");
+	std::ostringstream oss;
+	oss << variable_name + " << EOD\n";
 	uint32_t xsize = map.GetSize(0);
 	uint32_t ysize = map.GetSize(1);
 	//xsize、ysizeはxcoord.size()-1、ycoord.size()-1にそれぞれ等しいはず。
@@ -409,11 +412,11 @@ inline void MakeFile(const Matrix<double>& map, GetX getx, GetY gety, const std:
 		{
 			double x = getx(ix);
 			double cx = getx.center(ix);
-			ofs << x << " " << y << " " << cx << " " << cy << " " << map[ix][iy] << "\n";
+			oss << x << " " << y << " " << cx << " " << cy << " " << map[ix][iy] << "\n";
 		}
 		double x = getx(xsize);
 		double cx = getx.center(xsize);
-		ofs << x << " " << y << " " << cx << " " << cy << " " << " 0\n\n";
+		oss << x << " " << y << " " << cx << " " << cy << " " << " 0\n\n";
 	}
 	double y = gety(ysize);
 	double cy = gety.center(ysize);
@@ -421,9 +424,11 @@ inline void MakeFile(const Matrix<double>& map, GetX getx, GetY gety, const std:
 	{
 		double x = getx(ix);
 		double cx = getx.center(ix);
-		ofs << x << " " << y << " " << cx << " " << cy << " " << " 0\n";
+		oss << x << " " << y << " " << cx << " " << cy << " " << " 0\n";
 	}
-	ofs << getx(xsize) << " " << y << " " << getx.center(xsize) << " " << cy << " 0\n";
+	oss << getx(xsize) << " " << y << " " << getx.center(xsize) << " " << cy << " 0\n";
+	oss << "EOD\n";
+	return oss.str();
 }
 
 template <class PointParam>
@@ -995,7 +1000,8 @@ inline GPMPlotBuffer2D<GraphParam> GPMPlotBuffer2D<GraphParam>::Plot(GraphParam&
 {
 	if (i.mType == GraphParam::DATA)
 	{
-		i.mGraph = mCanvas->GetOutput() + ".tmp" + std::to_string(mParam.size()) + ".txt";
+		i.mGraph = "$" + mCanvas->GetOutput() + "_"+ std::to_string(mParam.size()); // datablock name
+		std::replace(i.mGraph.begin(), i.mGraph.end(), '.', '_'); // sanitized
 		auto GET_ARRAY = [](plot::ArrayData& X, const std::string& x,
 							std::vector<DataIterator>& it, std::vector<std::string>& column, std::string& labelcolumn, size_t& size)
 		{
@@ -1068,7 +1074,7 @@ inline GPMPlotBuffer2D<GraphParam> GPMPlotBuffer2D<GraphParam>::Plot(GraphParam&
 			if (f.mY2) GET_ARRAY(f.mY2, "y2", it, column, labelcolumn, size);
 			if (f.mVariableColor) GET_ARRAY(f.mVariableColor, "variable_fillcolor", it, column, labelcolumn, size);
 		}
-		MakeFile(it, size, i.mGraph);
+		mCanvas->Command(MakeDataBlock(it, size, i.mGraph));
 		if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
 		i.mColumn = std::move(column);
 	}
@@ -1186,21 +1192,31 @@ inline std::string GPMPlotBuffer2D<GraphParam>::PlotCommand(const GraphParam& p)
 {
 	//filename or equation
 	std::string c;
-	if (p.mType == GraphParam::EQUATION)
-	{
+	switch (p.mType) {
+	case GraphParam::EQUATION:
 		//equation
 		c += " " + p.mGraph;
-	}
-	else if (p.mType == GraphParam::DATA || p.mType == GraphParam::FILE)
-	{
+		break;
+	case GraphParam::FILE:
 		//filename
-		c += " '" + p.mGraph + "'";
+		c += "'" + p.mGraph + "'";
 
 		//using
 		c += " using ";
 		for (size_t i = 0; i < p.mColumn.size(); ++i)
 			c += p.mColumn[i] + ":";
 		c.pop_back();
+		break;
+	case GraphParam::DATA:
+		//variable name
+		c += " " + p.mGraph;
+
+		//using
+		c += " using ";
+		for (size_t i = 0; i < p.mColumn.size(); ++i)
+			c += p.mColumn[i] + ":";
+		c.pop_back();
+		break;
 	}
 
 	//title
@@ -1637,7 +1653,8 @@ struct GetCoordFromRange
 template <class GraphParam>
 inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam& i)
 {
-	i.mGraph = mCanvas->GetOutput() + ".tmp" + std::to_string(mParam.size()) + ".txt";
+	i.mGraph = "$" + mCanvas->GetOutput() + "_" + std::to_string(mParam.size()); // datablock name
+	std::replace(i.mGraph.begin(), i.mGraph.end(), '.', '_'); // sanitized
 	auto GET_ARRAY = [](plot::ArrayData& X, const std::string& x,
 						std::vector<DataIterator>& it, std::vector<std::string>& column, std::string& labelcolumn, size_t& size)
 	{
@@ -1694,12 +1711,12 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 				{
 					const auto& y = m.mYCoord.GetVector();
 					if (y.size() != ysize) throw InvalidArg("size of y coordinate list and the y size of mat must be the same.");
-					MakeFile(m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromVector(y), i.mGraph);
+					mCanvas->Command(MakeDataBlock(m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromVector(y), i.mGraph));
 				}
 				else
 				{
 					auto y = m.mYRange;
-					MakeFile(m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromRange(y, ysize), i.mGraph);
+					mCanvas->Command(MakeDataBlock(m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromRange(y, ysize), i.mGraph));
 				}
 			}
 			else
@@ -1709,12 +1726,12 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 				{
 					const auto& y = m.mYCoord.GetVector();
 					if (y.size() != ysize) throw InvalidArg("size of y coordinate list and the y size of mat must be the same.");
-					MakeFile(m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromVector(y), i.mGraph);
+					mCanvas->Command(MakeDataBlock(m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromVector(y), i.mGraph));
 				}
 				else
 				{
 					auto y = m.mYRange;
-					MakeFile(m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromRange(y, ysize), i.mGraph);
+					mCanvas->Command(MakeDataBlock(m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromRange(y, ysize), i.mGraph));
 				}
 			}
 		}
@@ -1773,13 +1790,11 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 				std::tie(start, incr, end) = m.mCntrLevelsIncremental;
 				mCanvas->Command(Format("set cntrparam levels incremental %lf, %lf, %lf", start, incr, end));
 			}
-			std::string path = i.mGraph;
-			path.erase(path.end() - 3, path.end());
-			path += "cntr.txt";
+			std::string variable_name_contour = i.mGraph + "_cntr";
 			mCanvas->Command("set pm3d implicit");
 			mCanvas->Command("set contour base");
 			mCanvas->Command("unset surface");
-			mCanvas->Command("set table '" + path + "'");
+			mCanvas->Command("set table " + variable_name_contour);
 			//3:4:column[2]でplotする。
 			mCanvas->Command(Format("splot '%s' using 3:4:%s t '%s'", i.mGraph, column[2], i.mTitle));
 			mCanvas->Command("unset table");
@@ -1816,7 +1831,7 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 		{
 			GET_ARRAY(p.mVariableSize, "variable_size", it, column, labelcolumn, size);
 		}
-		MakeFile(it, size, i.mGraph);
+		mCanvas->Command(MakeDataBlock(it, size, i.mGraph));
 	}
 	else if (i.IsVector())
 	{
@@ -1840,7 +1855,7 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 		{
 			GET_ARRAY(v.mVariableColor, "variable_color", it, column, labelcolumn, size);
 		}
-		MakeFile(it, size, i.mGraph);
+		mCanvas->Command(MakeDataBlock(it, size, i.mGraph));
 	}
 	if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
 	i.mColumn = std::move(column);
@@ -2027,13 +2042,12 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p)
 {
 	//filename or equation
 	std::string c;
-	if (p.mType == GraphParam::EQUATION)
-	{
+	switch (p.mType) {
+	case GraphParam::EQUATION:
 		//equation
 		c += " " + p.mGraph;
-	}
-	else if (p.mType == GraphParam::DATA || p.mType == GraphParam::FILE)
-	{
+		break;
+	case GraphParam::FILE:
 		//filename
 		c += "'" + p.mGraph + "'";
 
@@ -2042,6 +2056,17 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p)
 		for (size_t i = 0; i < p.mColumn.size(); ++i)
 			c += p.mColumn[i] + ":";
 		c.pop_back();
+		break;
+	case GraphParam::DATA:
+		//variable name
+		c += " " + p.mGraph;
+
+		//using
+		c += " using ";
+		for (size_t i = 0; i < p.mColumn.size(); ++i)
+			c += p.mColumn[i] + ":";
+		c.pop_back();
+		break;
 	}
 
 	//title
@@ -2080,9 +2105,7 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p)
 		auto& m = p.GetColormapParam();
 		if (m.mWithContour)
 		{
-			std::string str = "'" + p.mGraph;
-			str.erase(str.end() - 3, str.end());
-			c += ", " + str + "cntr.txt' with line";
+			c += ", " + p.mGraph + "_cntr with line";
 			if (p.mTitle == "notitle") c += " notitle";
 			else c += " title '" + p.mTitle + "'";
 			if (m.mCntrLineType != -2) c += Format(" linetype %d", m.mCntrLineType);
