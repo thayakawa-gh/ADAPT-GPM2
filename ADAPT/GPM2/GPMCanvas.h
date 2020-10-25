@@ -1199,7 +1199,7 @@ inline std::string GPMPlotBuffer2D<GraphParam>::PlotCommand(const GraphParam& p)
 		break;
 	case GraphParam::FILE:
 		//filename
-		c += "'" + p.mGraph + "'";
+		c += " '" + p.mGraph + "'";
 
 		//using
 		c += " using ";
@@ -2049,7 +2049,7 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p)
 		break;
 	case GraphParam::FILE:
 		//filename
-		c += "'" + p.mGraph + "'";
+		c += " '" + p.mGraph + "'";
 
 		//using
 		c += " using ";
