@@ -378,29 +378,27 @@ namespace detail
 
 using DataIterator = Variant<std::vector<double>::const_iterator, std::vector<std::string>::const_iterator>;
 
-inline std::string DefineDataBlock(std::vector<DataIterator>& its, size_t size, const std::string& variable_name)
+inline void DefineDataBlock(std::vector<DataIterator>& its, size_t size, const std::string& variable_name, GPMCanvas* g)
 {
 	auto f = Overload([](std::vector<double>::const_iterator& it, std::ostringstream& oss) { oss << " " << *it; ++it; },
 		[](std::vector<std::string>::const_iterator& it, std::ostringstream& oss) { oss << " " << *it; ++it; });
-	std::ostringstream oss;
-	oss << variable_name + " << EOD\n";
+	g->Command(variable_name + " << EOD");
 	for (size_t i = 0; i < size; ++i)
 	{
+		std::ostringstream oss;
 		for (auto& it : its)
 		{
 			it.Visit(f, oss);
 		}
-		oss << "\n";
+		g->Command(oss.str());
 	}
-	oss << "EOD\n";
-	return oss.str();
+	g->Command("EOD");
 }
 
 template <class GetX, class GetY>
-inline std::string DefineDataBlock(const Matrix<double>& map, GetX getx, GetY gety, const std::string& variable_name)
+inline void DefineDataBlock(const Matrix<double>& map, GetX getx, GetY gety, const std::string& variable_name, GPMCanvas* g)
 {
-	std::ostringstream oss;
-	oss << variable_name + " << EOD\n";
+	g->Command(variable_name + " << EOD");
 	uint32_t xsize = map.GetSize(0);
 	uint32_t ysize = map.GetSize(1);
 	//xsize、ysizeはxcoord.size()-1、ycoord.size()-1にそれぞれ等しいはず。
@@ -412,11 +410,13 @@ inline std::string DefineDataBlock(const Matrix<double>& map, GetX getx, GetY ge
 		{
 			double x = getx(ix);
 			double cx = getx.center(ix);
-			oss << x << " " << y << " " << cx << " " << cy << " " << map[ix][iy] << "\n";
+			g->Command(std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(cx) 
+				+ " " + std::to_string(cy) + " " + std::to_string(map[ix][iy]));
 		}
 		double x = getx(xsize);
 		double cx = getx.center(xsize);
-		oss << x << " " << y << " " << cx << " " << cy << " " << " 0\n\n";
+		g->Command(std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(cx)
+			+ " " + std::to_string(cy) + " 0\n");
 	}
 	double y = gety(ysize);
 	double cy = gety.center(ysize);
@@ -424,11 +424,11 @@ inline std::string DefineDataBlock(const Matrix<double>& map, GetX getx, GetY ge
 	{
 		double x = getx(ix);
 		double cx = getx.center(ix);
-		oss << x << " " << y << " " << cx << " " << cy << " " << " 0\n";
+		g->Command(std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(cx)
+			+ " " + std::to_string(cy) + " 0");
 	}
-	oss << getx(xsize) << " " << y << " " << getx.center(xsize) << " " << cy << " 0\n";
-	oss << "EOD\n";
-	return oss.str();
+	g->Command(std::to_string(getx(xsize)) + " " + std::to_string(y) + " " + std::to_string(getx.center(xsize))
+		+ " " + std::to_string(cy) + " 0\nEOD");
 }
 
 template <class PointParam>
@@ -1074,7 +1074,7 @@ inline GPMPlotBuffer2D<GraphParam> GPMPlotBuffer2D<GraphParam>::Plot(GraphParam&
 			if (f.mY2) GET_ARRAY(f.mY2, "y2", it, column, labelcolumn, size);
 			if (f.mVariableColor) GET_ARRAY(f.mVariableColor, "variable_fillcolor", it, column, labelcolumn, size);
 		}
-		mCanvas->Command(DefineDataBlock(it, size, i.mGraph));
+		DefineDataBlock(it, size, i.mGraph, mCanvas);
 		if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
 		i.mColumn = std::move(column);
 	}
@@ -1711,12 +1711,12 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 				{
 					const auto& y = m.mYCoord.GetVector();
 					if (y.size() != ysize) throw InvalidArg("size of y coordinate list and the y size of mat must be the same.");
-					mCanvas->Command(DefineDataBlock(m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromVector(y), i.mGraph));
+					DefineDataBlock(m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromVector(y), i.mGraph, mCanvas);
 				}
 				else
 				{
 					auto y = m.mYRange;
-					mCanvas->Command(DefineDataBlock(m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromRange(y, ysize), i.mGraph));
+					DefineDataBlock(m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromRange(y, ysize), i.mGraph, mCanvas);
 				}
 			}
 			else
@@ -1726,12 +1726,12 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 				{
 					const auto& y = m.mYCoord.GetVector();
 					if (y.size() != ysize) throw InvalidArg("size of y coordinate list and the y size of mat must be the same.");
-					mCanvas->Command(DefineDataBlock(m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromVector(y), i.mGraph));
+					DefineDataBlock(m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromVector(y), i.mGraph, mCanvas);
 				}
 				else
 				{
 					auto y = m.mYRange;
-					mCanvas->Command(DefineDataBlock(m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromRange(y, ysize), i.mGraph));
+					DefineDataBlock(m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromRange(y, ysize), i.mGraph, mCanvas);
 				}
 			}
 		}
@@ -1831,7 +1831,7 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 		{
 			GET_ARRAY(p.mVariableSize, "variable_size", it, column, labelcolumn, size);
 		}
-		mCanvas->Command(DefineDataBlock(it, size, i.mGraph));
+		DefineDataBlock(it, size, i.mGraph, mCanvas);
 	}
 	else if (i.IsVector())
 	{
@@ -1855,7 +1855,7 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 		{
 			GET_ARRAY(v.mVariableColor, "variable_color", it, column, labelcolumn, size);
 		}
-		mCanvas->Command(DefineDataBlock(it, size, i.mGraph));
+		DefineDataBlock(it, size, i.mGraph, mCanvas);
 	}
 	if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
 	i.mColumn = std::move(column);
