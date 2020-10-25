@@ -1790,11 +1790,10 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 				std::tie(start, incr, end) = m.mCntrLevelsIncremental;
 				mCanvas->Command(Format("set cntrparam levels incremental %lf, %lf, %lf", start, incr, end));
 			}
-			std::string variable_name_contour = i.mGraph + "_cntr";
 			mCanvas->Command("set pm3d implicit");
 			mCanvas->Command("set contour base");
 			mCanvas->Command("unset surface");
-			mCanvas->Command("set table " + variable_name_contour);
+			mCanvas->Command("set table " + i.mGraph + "_cntr");
 			//3:4:column[2]でplotする。
 			mCanvas->Command(Format("splot '%s' using 3:4:%s t '%s'", i.mGraph, column[2], i.mTitle));
 			mCanvas->Command("unset table");
