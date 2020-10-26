@@ -92,7 +92,8 @@ public:
 	void Command(const std::string& str);
 	void ShowCommands(bool b);
 
-	// Enable or disable datablock feature of gnuplot
+	// Enable or disable datablock feature of Gnuplot
+	// If disabled, temporary files are created to pass data to Gnuplot.
 	void EnableInMemoryDataTransfer(bool b);
 	bool IsInMemoryDataTransferEnabled();
 
@@ -104,7 +105,7 @@ protected:
 	std::string mOutput;
 	FILE* mPipe;
 	bool mShowCommands;
-	bool mInMemoryDataTransfer; // Use datablock feature of gnuplot if true (default: false)
+	bool mInMemoryDataTransfer; // Use datablock feature of Gnuplot if true (default: false)
 	template <class = void>
 	struct Paths
 	{
