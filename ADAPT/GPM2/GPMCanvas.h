@@ -506,7 +506,7 @@ inline void MakeDataObject(GPMCanvas* g, Args ...args)
 	}
 }
 
-// 半角英数字以外を全てアンダースコアに置換する
+// Replace non-alphanumeric characters with '_'
 inline std::string SanitizeForDataBlock(const std::string& str)
 {
 	std::string res = str;
