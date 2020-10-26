@@ -1284,7 +1284,8 @@ inline std::string GPMPlotBuffer2D<GraphParam>::PlotCommand(const GraphParam& p,
 {
 	//filename or equation
 	std::string c;
-	switch (p.mType) {
+	switch (p.mType) 
+	{
 	case GraphParam::EQUATION:
 		//equation
 		c += " " + p.mGraph;
