@@ -496,7 +496,8 @@ inline void MakeDataBlock(GPMCanvas* g, const Matrix<double>& map, GetX getx, Ge
 template <class ...Args>
 inline void MakeDataObject(GPMCanvas* g, Args ...args)
 {
-	if (g->IsInMemoryDataTransferEnabled()) {
+	if (g->IsInMemoryDataTransferEnabled()) 
+	{
 		MakeDataBlock(g, args...);
 	}
 	else {
@@ -705,7 +706,7 @@ std::string FilledCurveplotCommand(const FilledCurveParam& f)
 template <class GraphParam>
 std::string ColormapPlotCommand(const GraphParam& p)
 {
-    return std::string();
+	return std::string();
 }
 
 #define DEF_GPMAXIS(AXIS, axis)\
@@ -1299,7 +1300,8 @@ inline std::string GPMPlotBuffer2D<GraphParam>::PlotCommand(const GraphParam& p,
 		c.pop_back();
 		break;
 	case GraphParam::DATA:
-		if (IsInMemoryDataTransferEnabled) {
+		if (IsInMemoryDataTransferEnabled) 
+		{
 			//variable name
 			c += " " + p.mGraph;
 		}
@@ -1896,7 +1898,8 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 			mCanvas->Command("set pm3d implicit");
 			mCanvas->Command("set contour base");
 			mCanvas->Command("unset surface");
-			if (mCanvas->IsInMemoryDataTransferEnabled()) {
+			if (mCanvas->IsInMemoryDataTransferEnabled()) 
+			{
 				mCanvas->Command("set table " + i.mGraph + "_cntr");
 			}
 			else {
@@ -2152,7 +2155,8 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p,
 {
 	//filename or equation
 	std::string c;
-	switch (p.mType) {
+	switch (p.mType) 
+	{
 	case GraphParam::EQUATION:
 		//equation
 		c += " " + p.mGraph;
@@ -2168,7 +2172,8 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p,
 		c.pop_back();
 		break;
 	case GraphParam::DATA:
-		if (IsInMemoryDataTransferEnabled) {
+		if (IsInMemoryDataTransferEnabled) 
+		{
 			//variable name
 			c += " " + p.mGraph;
 		}
@@ -2221,7 +2226,8 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p,
 		auto& m = p.GetColormapParam();
 		if (m.mWithContour)
 		{
-			if (IsInMemoryDataTransferEnabled) {
+			if (IsInMemoryDataTransferEnabled) 
+			{
 				c += ", " + p.mGraph + "_cntr with line";
 			}
 			else {
