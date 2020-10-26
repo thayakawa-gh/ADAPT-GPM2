@@ -32,7 +32,7 @@ double fieldy(double x, double y)
 	double f2 = 3 * y / std::pow(r(x + 3, y), 3);
 	return f1 - f2;
 }
-int example_colormap(const std::string output_filename="example_colormap.png", const bool IsInMemoryDataTransferEnabled=false)
+int example_colormap(const std::string output_filename="example_colormap.png", const bool enable_in_memory_data_transfer=false)
 {
 	adapt::Matrix<double> m(100, 100);
 	std::pair<double, double> xrange = { -9.9, 9.9 };
@@ -91,7 +91,7 @@ int example_colormap(const std::string output_filename="example_colormap.png", c
 
 	GPMCanvasCM g1("example_colormap_tmpfile");
 	g1.ShowCommands(true);
-	g1.EnableInMemoryDataTransfer(IsInMemoryDataTransferEnabled); // Enable or disable datablock feature of gnuplot
+	g1.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
 	g1.SetTitle("example\\_colormap");
 	g1.SetPaletteDefined({ {0, "yellow" }, { 4.5, "red" }, { 5., "black" }, { 5.5, "blue"}, { 10, "cyan" } });
 	g1.SetSizeRatio(-1);
@@ -108,7 +108,7 @@ int example_colormap(const std::string output_filename="example_colormap.png", c
 
 	GPMCanvasCM g2("example_colormap_tmpfile");
 	g2.ShowCommands(true);
-	g2.EnableInMemoryDataTransfer(IsInMemoryDataTransferEnabled); // Enable or disable datablock feature of gnuplot
+	g2.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
 	g2.SetTitle("example\\_contour");
 	g2.SetPaletteDefined({ {0, "yellow" }, { 4.5, "red" }, { 5., "black" }, { 5.5, "blue"}, { 10, "cyan" } });
 	g2.SetSizeRatio(-1);

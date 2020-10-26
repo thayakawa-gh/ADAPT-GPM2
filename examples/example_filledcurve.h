@@ -15,7 +15,7 @@ struct ChiSquare
 	double k;
 };
 
-int example_filledcurve(const std::string output_filename = "example_filledcurve.png", const bool IsInMemoryDataTransferEnabled = false)
+int example_filledcurve(const std::string output_filename = "example_filledcurve.png", const bool enable_in_memory_data_transfer = false)
 {
 	std::vector<double> x(401, 0);
 	std::vector<double> y1(401, 0);
@@ -56,7 +56,7 @@ int example_filledcurve(const std::string output_filename = "example_filledcurve
 
 	GPMCanvas2D g(output_filename);
 	g.ShowCommands(true);
-	g.EnableInMemoryDataTransfer(IsInMemoryDataTransferEnabled); // Enable or disable datablock feature of gnuplot
+	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
 	g.SetTitle("example\\_filledcurve");
 	g.SetXRange(0, 8.0);
 	g.SetYRange(0, 1.0);
