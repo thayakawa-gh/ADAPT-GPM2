@@ -22,6 +22,7 @@ int main()
 	example_for_loop();
 
 	//The following are tests for in-memory data transfer (datablock feature).
+	//Non-alphanumeric characters are replaced with '_'.
 	example_2d("example_2d-inmemory.png", true);
 
 	example_colormap("example_colormap@inmemory.png", true);
