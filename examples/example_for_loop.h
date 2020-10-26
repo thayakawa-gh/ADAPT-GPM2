@@ -1,11 +1,15 @@
+#ifndef EXAMPLE_FORLOOP_H
+#define EXAMPLE_FORLOOP_H
+
 #include <ADAPT/GPM2/GPMCanvas.h>
-#include <string>
 
 using namespace adapt::gpm2;
 
-int example_for_loop()
+int example_for_loop(const std::string output_filename = "example_for_loop.png", const bool IsInMemoryDataTransferEnabled = false)
 {
-	GPMCanvas2D g("example_for_loop.png");
+	GPMCanvas2D g(output_filename);
+	g.ShowCommands(true);
+	g.EnableInMemoryDataTransfer(IsInMemoryDataTransferEnabled); // Enable or disable datablock feature of gnuplot
 
 	auto buf = g.GetBuffer();
 	for (int i = 0; i < 5; ++i)
@@ -16,3 +20,5 @@ int example_for_loop()
 	buf.Flush();
 	return 0;
 }
+
+#endif

@@ -92,6 +92,10 @@ public:
 	void Command(const std::string& str);
 	void ShowCommands(bool b);
 
+	// Enable or disable datablock feature of gnuplot
+	void EnableInMemoryDataTransfer(bool b);
+	bool IsInMemoryDataTransferEnabled();
+
 	static void SetGnuplotPath(const std::string& path);
 	static std::string GetGnuplotPath();
 
@@ -100,6 +104,7 @@ protected:
 	std::string mOutput;
 	FILE* mPipe;
 	bool mShowCommands;
+	bool mInMemoryDataTransfer; // Use datablock feature of gnuplot if true (default: false)
 	template <class = void>
 	struct Paths
 	{
@@ -111,7 +116,7 @@ protected:
 
 
 inline GPMCanvas::GPMCanvas(const std::string& output, double sizex, double sizey)
-	: mOutput(output), mPipe(nullptr), mShowCommands(false)
+	: mOutput(output), mPipe(nullptr), mShowCommands(false), mInMemoryDataTransfer(false)
 {
 	if (Paths<>::msGlobalPipe != nullptr) mPipe = Paths<>::msGlobalPipe;
 	else
@@ -136,7 +141,7 @@ inline GPMCanvas::GPMCanvas(const std::string& output, double sizex, double size
 	}
 }
 inline GPMCanvas::GPMCanvas()
-	: mOutput("ADAPT_GPM2_TMPFILE"), mPipe(nullptr), mShowCommands(false)
+	: mOutput("ADAPT_GPM2_TMPFILE"), mPipe(nullptr), mShowCommands(false), mInMemoryDataTransfer(false)
 {
 	if (Paths<>::msGlobalPipe != nullptr) mPipe = Paths<>::msGlobalPipe;
 	else
@@ -322,6 +327,15 @@ inline void GPMCanvas::ShowCommands(bool b)
 	mShowCommands = b;
 }
 
+inline void GPMCanvas::EnableInMemoryDataTransfer(bool b)
+{
+	mInMemoryDataTransfer = b;
+}
+
+inline bool GPMCanvas::IsInMemoryDataTransferEnabled()
+{
+	return mInMemoryDataTransfer;
+}
 
 inline void GPMCanvas::SetGnuplotPath(const std::string& path)
 {
@@ -378,7 +392,55 @@ namespace detail
 
 using DataIterator = Variant<std::vector<double>::const_iterator, std::vector<std::string>::const_iterator>;
 
-inline void DefineDataBlock(std::vector<DataIterator>& its, size_t size, const std::string& variable_name, GPMCanvas* g)
+inline void MakeFile(std::vector<DataIterator>& its, size_t size, const std::string& filename)
+{
+	auto f = Overload([](std::vector<double>::const_iterator& it, std::ofstream& ofs) { ofs << " " << *it; ++it; },
+		[](std::vector<std::string>::const_iterator& it, std::ofstream& ofs) { ofs << " " << *it; ++it; });
+	std::ofstream ofs(filename);
+	if (!ofs) throw InvalidArg("file \"" + filename + "\" cannot open.");
+	for (size_t i = 0; i < size; ++i)
+	{
+		for (auto& it : its)
+		{
+			it.Visit(f, ofs);
+		}
+		ofs << "\n";
+	}
+}
+template <class GetX, class GetY>
+inline void MakeFile(const Matrix<double>& map, GetX getx, GetY gety, const std::string& filename)
+{
+	std::ofstream ofs(filename);
+	if (!ofs) throw InvalidArg("file \"" + filename + "\" cannot open.");
+	uint32_t xsize = map.GetSize(0);
+	uint32_t ysize = map.GetSize(1);
+	//xsize、ysizeはxcoord.size()-1、ycoord.size()-1にそれぞれ等しいはず。
+	for (uint32_t iy = 0; iy < ysize; ++iy)
+	{
+		double y = gety(iy);
+		double cy = gety.center(iy);
+		for (uint32_t ix = 0; ix < xsize; ++ix)
+		{
+			double x = getx(ix);
+			double cx = getx.center(ix);
+			ofs << x << " " << y << " " << cx << " " << cy << " " << map[ix][iy] << "\n";
+		}
+		double x = getx(xsize);
+		double cx = getx.center(xsize);
+		ofs << x << " " << y << " " << cx << " " << cy << " " << " 0\n\n";
+	}
+	double y = gety(ysize);
+	double cy = gety.center(ysize);
+	for (uint32_t ix = 0; ix < xsize; ++ix)
+	{
+		double x = getx(ix);
+		double cx = getx.center(ix);
+		ofs << x << " " << y << " " << cx << " " << cy << " " << " 0\n";
+	}
+	ofs << getx(xsize) << " " << y << " " << getx.center(xsize) << " " << cy << " 0\n";
+}
+
+inline void MakeDataBlock(GPMCanvas* g, std::vector<DataIterator>& its, size_t size, const std::string& variable_name)
 {
 	auto f = Overload([](std::vector<double>::const_iterator& it, std::ostringstream& oss) { oss << " " << *it; ++it; },
 		[](std::vector<std::string>::const_iterator& it, std::ostringstream& oss) { oss << " " << *it; ++it; });
@@ -396,7 +458,7 @@ inline void DefineDataBlock(std::vector<DataIterator>& its, size_t size, const s
 }
 
 template <class GetX, class GetY>
-inline void DefineDataBlock(const Matrix<double>& map, GetX getx, GetY gety, const std::string& variable_name, GPMCanvas* g)
+inline void MakeDataBlock(GPMCanvas* g, const Matrix<double>& map, GetX getx, GetY gety, const std::string& variable_name)
 {
 	g->Command(variable_name + " << EOD");
 	uint32_t xsize = map.GetSize(0);
@@ -429,6 +491,30 @@ inline void DefineDataBlock(const Matrix<double>& map, GetX getx, GetY gety, con
 	}
 	g->Command(std::to_string(getx(xsize)) + " " + std::to_string(y) + " " + std::to_string(getx.center(xsize))
 		+ " " + std::to_string(cy) + " 0\nEOD");
+}
+
+template <class ...Args>
+inline void MakeDataObject(GPMCanvas* g, Args ...args)
+{
+	if (g->IsInMemoryDataTransferEnabled()) {
+		MakeDataBlock(g, args...);
+	}
+	else {
+		MakeFile(args...);
+	}
+}
+
+// 半角英数字以外を全てアンダースコアに置換する
+std::string SanitizeForDataBlock(const std::string& str)
+{
+	std::string res = str;
+	auto pos = res.begin();
+	while (pos = std::find_if(pos, res.end(), [](char c) { return !isalnum(c); }), pos != res.end())
+	{
+		res.replace(pos, pos + 1, 1, '_');
+		pos++;
+	}
+	return res;
 }
 
 template <class PointParam>
@@ -918,7 +1004,7 @@ protected:
 
 	GPMPlotBuffer2D Plot(GraphParam& i);
 
-	static std::string PlotCommand(const GraphParam& i);
+	static std::string PlotCommand(const GraphParam& i, const bool IsInMemoryDataTransferEnabled);
 	static std::string InitCommand();
 
 	std::vector<GraphParam> mParam;
@@ -989,7 +1075,7 @@ inline void GPMPlotBuffer2D<GraphParam>::Flush()
 	std::string c = "plot";
 	for (auto& i : mParam)
 	{
-		c += PlotCommand(i) + ", ";
+		c += PlotCommand(i, mCanvas->IsInMemoryDataTransferEnabled()) + ", ";
 	}
 	c.erase(c.end() - 2, c.end());
 	mCanvas->Command(c);
@@ -1000,8 +1086,13 @@ inline GPMPlotBuffer2D<GraphParam> GPMPlotBuffer2D<GraphParam>::Plot(GraphParam&
 {
 	if (i.mType == GraphParam::DATA)
 	{
-		i.mGraph = "$" + mCanvas->GetOutput() + "_"+ std::to_string(mParam.size()); // datablock name
-		std::replace(i.mGraph.begin(), i.mGraph.end(), '.', '_'); // sanitized
+		if (mCanvas->IsInMemoryDataTransferEnabled())
+		{
+			i.mGraph = "$" + SanitizeForDataBlock(mCanvas->GetOutput()) + "_" + std::to_string(mParam.size()); // datablock name
+		}
+		else {
+			i.mGraph = mCanvas->GetOutput() + ".tmp" + std::to_string(mParam.size()) + ".txt";
+		}
 		auto GET_ARRAY = [](plot::ArrayData& X, const std::string& x,
 							std::vector<DataIterator>& it, std::vector<std::string>& column, std::string& labelcolumn, size_t& size)
 		{
@@ -1074,7 +1165,7 @@ inline GPMPlotBuffer2D<GraphParam> GPMPlotBuffer2D<GraphParam>::Plot(GraphParam&
 			if (f.mY2) GET_ARRAY(f.mY2, "y2", it, column, labelcolumn, size);
 			if (f.mVariableColor) GET_ARRAY(f.mVariableColor, "variable_fillcolor", it, column, labelcolumn, size);
 		}
-		DefineDataBlock(it, size, i.mGraph, mCanvas);
+		MakeDataObject(mCanvas, it, size, i.mGraph);
 		if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
 		i.mColumn = std::move(column);
 	}
@@ -1188,7 +1279,7 @@ PlotFilledCurves(const std::vector<Type1>& x, const std::vector<Type2>& y, const
 }
 
 template <class GraphParam>
-inline std::string GPMPlotBuffer2D<GraphParam>::PlotCommand(const GraphParam& p)
+inline std::string GPMPlotBuffer2D<GraphParam>::PlotCommand(const GraphParam& p, const bool IsInMemoryDataTransferEnabled)
 {
 	//filename or equation
 	std::string c;
@@ -1208,8 +1299,14 @@ inline std::string GPMPlotBuffer2D<GraphParam>::PlotCommand(const GraphParam& p)
 		c.pop_back();
 		break;
 	case GraphParam::DATA:
-		//variable name
-		c += " " + p.mGraph;
+		if (IsInMemoryDataTransferEnabled) {
+			//variable name
+			c += " " + p.mGraph;
+		}
+		else {
+			//filename
+			c += " '" + p.mGraph + "'";
+		}
 
 		//using
 		c += " using ";
@@ -1517,7 +1614,7 @@ protected:
 
 	GPMPlotBufferCM Plot(GraphParam& i);
 
-	static std::string PlotCommand(const GraphParam& i);
+	static std::string PlotCommand(const GraphParam& i, const bool IsInMemoryDataTransferEnabled);
 	static std::string InitCommand();
 
 	std::vector<GraphParam> mParam;
@@ -1601,7 +1698,7 @@ inline void GPMPlotBufferCM<GraphParam>::Flush()
 	std::string c = "splot";
 	for (auto& i : mParam)
 	{
-		c += PlotCommand(i) + ", ";
+		c += PlotCommand(i, mCanvas->IsInMemoryDataTransferEnabled()) + ", ";
 	}
 	c.erase(c.end() - 2, c.end());
 	mCanvas->Command(c);
@@ -1653,8 +1750,13 @@ struct GetCoordFromRange
 template <class GraphParam>
 inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam& i)
 {
-	i.mGraph = "$" + mCanvas->GetOutput() + "_" + std::to_string(mParam.size()); // datablock name
-	std::replace(i.mGraph.begin(), i.mGraph.end(), '.', '_'); // sanitized
+	if (mCanvas->IsInMemoryDataTransferEnabled())
+	{
+		i.mGraph = "$" + SanitizeForDataBlock(mCanvas->GetOutput()) + "_" + std::to_string(mParam.size()); // datablock name
+	}
+	else {
+		i.mGraph = mCanvas->GetOutput() + ".tmp" + std::to_string(mParam.size()) + ".txt";
+	}
 	auto GET_ARRAY = [](plot::ArrayData& X, const std::string& x,
 						std::vector<DataIterator>& it, std::vector<std::string>& column, std::string& labelcolumn, size_t& size)
 	{
@@ -1711,12 +1813,12 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 				{
 					const auto& y = m.mYCoord.GetVector();
 					if (y.size() != ysize) throw InvalidArg("size of y coordinate list and the y size of mat must be the same.");
-					DefineDataBlock(m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromVector(y), i.mGraph, mCanvas);
+					MakeDataObject(mCanvas, m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromVector(y), i.mGraph);
 				}
 				else
 				{
 					auto y = m.mYRange;
-					DefineDataBlock(m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromRange(y, ysize), i.mGraph, mCanvas);
+					MakeDataObject(mCanvas,m.mZMap.GetMatrix(), GetCoordFromVector(x), GetCoordFromRange(y, ysize), i.mGraph);
 				}
 			}
 			else
@@ -1726,12 +1828,12 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 				{
 					const auto& y = m.mYCoord.GetVector();
 					if (y.size() != ysize) throw InvalidArg("size of y coordinate list and the y size of mat must be the same.");
-					DefineDataBlock(m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromVector(y), i.mGraph, mCanvas);
+					MakeDataObject(mCanvas, m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromVector(y), i.mGraph);
 				}
 				else
 				{
 					auto y = m.mYRange;
-					DefineDataBlock(m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromRange(y, ysize), i.mGraph, mCanvas);
+					MakeDataObject(mCanvas, m.mZMap.GetMatrix(), GetCoordFromRange(x, xsize), GetCoordFromRange(y, ysize), i.mGraph);
 				}
 			}
 		}
@@ -1790,10 +1892,19 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 				std::tie(start, incr, end) = m.mCntrLevelsIncremental;
 				mCanvas->Command(Format("set cntrparam levels incremental %lf, %lf, %lf", start, incr, end));
 			}
+
 			mCanvas->Command("set pm3d implicit");
 			mCanvas->Command("set contour base");
 			mCanvas->Command("unset surface");
-			mCanvas->Command("set table " + i.mGraph + "_cntr");
+			if (mCanvas->IsInMemoryDataTransferEnabled()) {
+				mCanvas->Command("set table " + i.mGraph + "_cntr");
+			}
+			else {
+				std::string path = i.mGraph;
+				path.erase(path.end() - 3, path.end());
+				path += "cntr.txt";
+				mCanvas->Command("set table '" + path + "'");
+			}
 			//3:4:column[2]でplotする。
 			mCanvas->Command(Format("splot '%s' using 3:4:%s t '%s'", i.mGraph, column[2], i.mTitle));
 			mCanvas->Command("unset table");
@@ -1830,7 +1941,7 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 		{
 			GET_ARRAY(p.mVariableSize, "variable_size", it, column, labelcolumn, size);
 		}
-		DefineDataBlock(it, size, i.mGraph, mCanvas);
+		MakeDataObject(mCanvas, it, size, i.mGraph);
 	}
 	else if (i.IsVector())
 	{
@@ -1854,7 +1965,7 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 		{
 			GET_ARRAY(v.mVariableColor, "variable_color", it, column, labelcolumn, size);
 		}
-		DefineDataBlock(it, size, i.mGraph, mCanvas);
+		MakeDataObject(mCanvas, it, size, i.mGraph);
 	}
 	if (!labelcolumn.empty()) column.emplace_back(std::move(labelcolumn));
 	i.mColumn = std::move(column);
@@ -2037,7 +2148,7 @@ PlotColormap(const Matrix<double>& map, std::pair<double, double> x, std::pair<d
 }
 
 template <class GraphParam>
-inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p)
+inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p, const bool IsInMemoryDataTransferEnabled)
 {
 	//filename or equation
 	std::string c;
@@ -2057,8 +2168,14 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p)
 		c.pop_back();
 		break;
 	case GraphParam::DATA:
-		//variable name
-		c += " " + p.mGraph;
+		if (IsInMemoryDataTransferEnabled) {
+			//variable name
+			c += " " + p.mGraph;
+		}
+		else {
+			//filename
+			c += " '" + p.mGraph + "'";
+		}
 
 		//using
 		c += " using ";
@@ -2104,7 +2221,14 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p)
 		auto& m = p.GetColormapParam();
 		if (m.mWithContour)
 		{
-			c += ", " + p.mGraph + "_cntr with line";
+			if (IsInMemoryDataTransferEnabled) {
+				c += ", " + p.mGraph + "_cntr with line";
+			}
+			else {
+				std::string str = "'" + p.mGraph;
+				str.erase(str.end() - 3, str.end());
+				c += ", " + str + "cntr.txt' with line";
+			}
 			if (p.mTitle == "notitle") c += " notitle";
 			else c += " title '" + p.mTitle + "'";
 			if (m.mCntrLineType != -2) c += Format(" linetype %d", m.mCntrLineType);

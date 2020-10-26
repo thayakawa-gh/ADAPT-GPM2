@@ -6,7 +6,7 @@
 
 using namespace adapt::gpm2;
 
-int example_2d()
+int example_2d(const std::string output_filename = "example_2d.png", const bool IsInMemoryDataTransferEnabled = false)
 {
 	std::string norm = std::to_string(250. / std::sqrt(2 * 3.1415926535));
 	std::string equation = norm + "*exp(-x*x/2)";
@@ -45,8 +45,9 @@ int example_2d()
 	yerrorbar      ... yerrorbar
 	*/
 
-	GPMCanvas2D g("example_2d.png");
+	GPMCanvas2D g(output_filename);
 	g.ShowCommands(true);
+	g.EnableInMemoryDataTransfer(IsInMemoryDataTransferEnabled); // Enable or disable datablock feature of gnuplot
 	g.SetTitle("example\\_2d");
 	g.SetXRange(-4.0, 4.0);
 	g.SetXLabel("x");

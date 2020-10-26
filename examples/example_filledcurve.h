@@ -15,7 +15,7 @@ struct ChiSquare
 	double k;
 };
 
-int example_filledcurve()
+int example_filledcurve(const std::string output_filename = "example_filledcurve.png", const bool IsInMemoryDataTransferEnabled = false)
 {
 	std::vector<double> x(401, 0);
 	std::vector<double> y1(401, 0);
@@ -54,8 +54,9 @@ int example_filledcurve()
 	below          ... the filled area is limited to the below side of baseline or y2 curve.
 	*/
 
-	GPMCanvas2D g("example_filledcurve.png");
+	GPMCanvas2D g(output_filename);
 	g.ShowCommands(true);
+	g.EnableInMemoryDataTransfer(IsInMemoryDataTransferEnabled); // Enable or disable datablock feature of gnuplot
 	g.SetTitle("example\\_filledcurve");
 	g.SetXRange(0, 8.0);
 	g.SetYRange(0, 1.0);
