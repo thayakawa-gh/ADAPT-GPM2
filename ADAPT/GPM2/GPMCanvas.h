@@ -495,14 +495,14 @@ inline void MakeDataBlock(GPMCanvas* g, const Matrix<double>& map, GetX getx, Ge
 }
 
 template <class ...Args>
-inline void MakeDataObject(GPMCanvas* g, Args ...args)
+inline void MakeDataObject(GPMCanvas* g, Args&& ...args)
 {
 	if (g->IsInMemoryDataTransferEnabled()) 
 	{
-		MakeDataBlock(g, args...);
+		MakeDataBlock(g, std::forward<Args>(args)...);
 	}
 	else {
-		MakeFile(args...);
+		MakeFile(std::forward<Args>(args)...);
 	}
 }
 
