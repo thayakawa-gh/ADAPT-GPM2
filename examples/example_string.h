@@ -5,7 +5,7 @@
 
 using namespace adapt::gpm2;
 
-int example_string()
+int example_string(const std::string output_filename = "example_string_label.png", const bool enable_in_memory_data_transfer = false)
 {
     std::vector<std::string> x;
     std::vector<double> y;
@@ -21,8 +21,9 @@ int example_string()
     x.push_back("label-nine");  y.push_back(9);
     x.push_back("label-ten");  y.push_back(10);
 
-    GPMCanvas2D g("string_label.png");
+    GPMCanvas2D g(output_filename);
     g.ShowCommands(true);
+    g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
     g.SetXRange(-1, 10);
     g.SetYRange(0, 11);
     g.SetXticsRotate(-45);

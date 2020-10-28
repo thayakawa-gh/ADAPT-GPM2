@@ -8,7 +8,6 @@ GPMCanvas::SetGnuplotPath("path to gnuplot");
 std::string norm = std::to_string(250. / std::sqrt(2 * 3.1415926535));
 std::string equation = norm + "*exp(-x*x/2)";
 
-std::random_device rd;
 std::mt19937_64 mt(0);
 std::normal_distribution<> nd(0., 1.);
 std::vector<double> x1(32, 0);

@@ -20,4 +20,10 @@ int main()
 	example_string();
 
 	example_for_loop();
+
+	//The following are tests for in-memory data transfer (datablock feature).
+	//Non-alphanumeric characters are intentionally used to test SanitizeForDataBlock().
+	example_2d("example_2d-inmemory.png", true);
+
+	example_colormap("example_colormap@inmemory.png", true);
 }
