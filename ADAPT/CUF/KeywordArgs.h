@@ -29,8 +29,8 @@ struct KeywordValue
 	using Type = Type_;
 	using Tag = Tag_;
 
-	KeywordValue(Type v) : mValue(std::forward<Type>(v)) {}
-	Type Get() { return std::forward<Type>(mValue); }
+	constexpr KeywordValue(Type v) : mValue(std::forward<Type>(v)) {}
+	constexpr Type Get() { return std::forward<Type>(mValue); }
 	template <class T>
 	constexpr bool Is() const { return std::is_same<T, Type>::value; }
 private:
@@ -106,7 +106,7 @@ struct GetKeywordArg_impl
 {
 	//キーワード引数が与えられている場合。
 	template <class Keyword, class ...Args>
-	static typename Keyword::Type f(Keyword, Args&& ...args)
+	static constexpr typename Keyword::Type f(Keyword, Args&& ...args)
 	{
 		return std::get<KeyIndex>(std::forward_as_tuple(std::forward<Args>(args)...)).Get();
 	}
@@ -118,7 +118,7 @@ struct GetKeywordArg_impl<std::numeric_limits<std::size_t>::max()>
 	//デフォルト値が引数の最後に与えられている場合はそれを返し、
 	//なければstatic_assertでコンパイルエラーにする。
 	template <class Keyword, class ...Args>
-	static std::remove_reference_t<typename Keyword::Type> f(Keyword k, Args&& ...args)
+	static constexpr std::remove_reference_t<typename Keyword::Type> f(Keyword k, Args&& ...args)
 	{
 		return detail::GetDefault(k, std::forward<Args>(args)...);
 	}
@@ -230,7 +230,7 @@ constexpr bool KeywordExists(Keyword, std::tuple<Args...>)
 }
 
 template <class Keyword, class ...Args>
-decltype(auto) GetKeywordArg(Keyword k, Args&& ...args)
+constexpr decltype(auto) GetKeywordArg(Keyword k, Args&& ...args)
 {
 	//キーワード引数が与えられている場合に呼ばれる。
 	//該当するキーワードから値を取り出して返す。

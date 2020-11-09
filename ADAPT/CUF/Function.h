@@ -109,6 +109,97 @@ std::string ToString(const T& c)
 
 namespace detail
 {
+
+template <class T>
+struct GetArraySize_impl;
+template <class Type, size_t N>
+struct GetArraySize_impl<std::array<Type, N>> { static constexpr size_t Size = N; };
+
+template <class Array>
+constexpr size_t GetArraySize() { return GetArraySize_impl<std::decay_t<Array>>::Size; }
+
+template <bool Rval>
+struct Forward_impl
+{
+	template <class Type>
+	static constexpr std::remove_reference_t<Type>& apply(Type&& t) { return static_cast<std::remove_reference_t<Type>&>(t); }
+};
+template <>
+struct Forward_impl<true>
+{
+	template <class Type>
+	static constexpr std::remove_reference_t<Type>&& apply(Type&& t) { return static_cast<std::remove_reference_t<Type>&&>(t); }
+};
+
+template <bool Rval, class Type>
+constexpr decltype(auto) Forward(Type&& v) { return Forward_impl<Rval>::apply(std::forward<Type>(v)); }
+
+template <class Array1, size_t ...Indices1, class Array2, size_t ...Indices2>
+constexpr auto CatArray_impl(Array1&& a, std::index_sequence<Indices1...>,
+							 Array2&& b, std::index_sequence<Indices2...>)
+{
+	constexpr size_t N1 = detail::GetArraySize<Array1>();
+	constexpr size_t N2 = detail::GetArraySize<Array2>();
+	using Type = typename std::decay_t<Array1>::value_type;
+	static_assert(std::is_same<Type, typename std::decay_t<Array2>::value_type>::value, "");
+	constexpr bool L1 = std::is_lvalue_reference<Array1>::value;
+	constexpr bool L2 = std::is_lvalue_reference<Array2>::value;
+#if __cplusplus >= 201703L
+	return std::array<Type, N1 + N2>{ Forward<!L1>(a[Indices1])..., Forward<!L2>(b[Indices2])... };
+#else if __cplusplus >= 201402L
+	return std::array<Type, N1 + N2>{ static_cast<const std::remove_reference_t<Array1>&>(a)[Indices1]...,
+									  static_cast<const std::remove_reference_t<Array2>&>(b)[Indices2]... };
+#endif
+}
+}
+
+template <class Array>
+constexpr Array CatArray(Array&& a)
+{
+	return a;
+}
+template <class Array1, class Array2>
+constexpr auto CatArray(Array1&& a, Array2&& b)
+{
+	constexpr size_t N1 = detail::GetArraySize<Array1>();
+	constexpr size_t N2 = detail::GetArraySize<Array2>();
+	return detail::CatArray_impl(std::forward<Array1>(a), std::make_index_sequence<N1>(),
+								 std::forward<Array2>(b), std::make_index_sequence<N2>());
+}
+
+namespace detail
+{
+template <class Array1, class Array2>
+constexpr auto CatArray_rec(Array1&& a, Array2&& b)
+{
+	return CatArray(std::forward<Array1>(a), std::forward<Array2>(b));
+}
+template <class Array1, class Array2, class Array3, class ...Arrays>
+constexpr auto CatArray_rec(Array1&& a, Array2&& b, Array3&& c, Arrays&& ...as)
+{
+	return CatArray_rec(CatArray(std::forward<Array1>(a), std::forward<Array2>(b)), std::forward<Array3>(c), std::forward<Arrays>(as)...);
+}
+}
+template <class ...Array>
+constexpr auto CatArray(Array&& ...a)
+{
+	return detail::CatArray_rec(std::forward<Array>(a)...);
+}
+template <class ...Args>
+constexpr auto MakeArray(Args&& ...args)->
+std::array<
+	typename std::decay_t<
+	typename std::common_type_t<Args...>>,
+	sizeof...(Args)>
+{
+	return std::array<
+		typename std::decay<
+		typename std::common_type<Args...>::type>::type,
+		sizeof...(Args)>{ std::forward<Args>(args)... };
+}
+
+namespace detail
+{
 template <class Func, class T>
 constexpr auto Accumulate_impl(Func f, T&& a)
 {

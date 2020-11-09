@@ -64,9 +64,7 @@ class IsBasedOn<void, Base>
 public:
 	static constexpr bool value = false;
 };
-//Base<T...>をTに依らず継承しているか否かを判定する汎用的なクラスを書くことは出来ないのだろうか。
-//あった！あったぞ！できたぞ！すげぇ！テンプレート便利すぎだろこん畜生！
-//実は継承関係でなくとも、T<int>に対するT<...>みたいな関係であれば判定できる。
+
 template <class Derived, template <class ...> class Base>
 class IsBasedOn_T
 {
@@ -124,6 +122,21 @@ private:
 	template <int N, int M, class ...U>
 	static constexpr Yes check(const Base<N, M, U...>&);
 	static constexpr No  check(...);
+
+	static const Derived& d;
+public:
+	static constexpr bool value = sizeof(check(d)) == sizeof(Yes);
+};
+template <class Derived, template <int...> class Base>
+class IsBasedOn_XN
+{
+private:
+	typedef char  Yes;
+	typedef struct { char c[2]; } No;
+
+	template <int ...N>
+	static constexpr Yes check(const Base<N...>&);
+	static constexpr No check(...);
 
 	static const Derived& d;
 public:
@@ -237,11 +250,12 @@ struct GetType
 										TypeList<Types...>>(),
 										std::integral_constant<size_t, N>()));
 };
-
 template <size_t N, class ...Types>
 struct GetType<N, TypeList<Types...>>
 	: public GetType<N, Types...>
 {};
+template <int N, class ...Args>
+using GetTypeT = typename GetType<N, Args...>::Type;
 
 namespace detail
 {
@@ -280,7 +294,7 @@ private:
 public:
 
 	static constexpr size_t Index = Exist::Index;
-	static constexpr size_t value = Exist::value;
+	static constexpr bool value = Exist::value;
 };
 
 #if _MSC_VER <= 1900
@@ -426,8 +440,22 @@ struct CatTypeList<T1, T2, T3, Ts...>
 template <class ...T>
 using CatTypeListT = typename CatTypeList<T...>::Type;
 
-template <int N, class ...Args>
-using GetTypeT = typename GetType<N, Args...>::Type;
+template <size_t Index, class ...Types>
+struct GetFrontTypes;
+template <class ...Types>
+struct GetFrontTypes<0, Types...>
+{
+	using Type = TypeList<>;
+};
+template <size_t Index, class Head, class ...Types>
+struct GetFrontTypes<Index, Head, Types...>
+{
+	using Type = CatTypeListT<TypeList<Head>, typename GetFrontTypes<Index - 1, Types...>::Type>;
+};
+template <size_t Index, class ...Types>
+using GetFrontTypesT = typename GetFrontTypes<Index, Types...>::Type;
+
+
 
 template <int Nth, int M, class Type, class Head, class ...Body, std::enable_if_t<Nth != M, std::nullptr_t> = nullptr>
 Type GetNthArgument_impl(Head&& head, Body&& ...body)
@@ -443,6 +471,33 @@ template <int Nth, class ...Args, class Type = GetTypeT<Nth, Args...>>
 Type GetNthArgument(Args&& ...args)
 {
 	return GetNthArgument_impl<Nth, 0, Args...>(std::forward<Args>(args)...);
+}
+
+namespace detail
+{
+template <size_t N>
+struct GetFrontArgs_impl
+{
+	template <class Head, class ...Args>
+	static constexpr auto apply(Head&& head, Args&& ...args)
+	{
+		return std::tuple_cat(std::forward_as_tuple(std::forward<Head>(head)), GetFrontArgs_impl<N - 1>::apply(std::forward<Args>(args)...));
+	}
+};
+template <>
+struct GetFrontArgs_impl<0>
+{
+	template <class ...Args>
+	static constexpr auto apply(Args&& ...)
+	{
+		return std::tuple<>();
+	}
+};
+}
+template <size_t Index, class ...Args>
+static constexpr auto GetFrontArgs(Args&& ...args)
+{
+	return detail::GetFrontArgs_impl<Index>::apply(std::forward<Args>(args)...);
 }
 
 template <class Type_>

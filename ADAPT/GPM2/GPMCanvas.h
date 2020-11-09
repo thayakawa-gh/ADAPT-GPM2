@@ -89,7 +89,8 @@ public:
 	void Reset();
 	const std::string& GetOutput() const;
 
-	void Command(const std::string& str);
+	template <class ...Args>
+	void Command(Args&& ...args);
 	void ShowCommands(bool b);
 
 	// Enable or disable datablock feature of Gnuplot
@@ -317,11 +318,11 @@ inline const std::string& GPMCanvas::GetOutput() const
 	return mOutput;
 }
 
-inline void GPMCanvas::Command(const std::string& str)
+template <class ...Args>
+inline void GPMCanvas::Command(Args&& ...args)
 {
-	fprintf(mPipe, "%s\n", str.c_str());
-	fflush(mPipe);
-	if (mShowCommands) std::cout << str << std::endl;
+	adapt::Print(mPipe, std::forward<Args>(args)...);
+	if (mShowCommands) adapt::Print(std::cout, std::forward<Args>(args)...);
 }
 inline void GPMCanvas::ShowCommands(bool b)
 {
@@ -393,24 +394,24 @@ namespace detail
 
 using DataIterator = Variant<std::vector<double>::const_iterator, std::vector<std::string>::const_iterator>;
 
-inline void MakeDataObjectCommon(std::function<void(std::string)> output_func, std::vector<DataIterator>& its, size_t size)
+template <class OutputFunc>
+inline void MakeDataObjectCommon(OutputFunc output_func, std::vector<DataIterator>& its, size_t size)
 {
-	auto f = Overload([](std::vector<double>::const_iterator& it, std::ostringstream& oss) { oss << " " << *it; ++it; },
-		[](std::vector<std::string>::const_iterator& it, std::ostringstream& oss) { oss << " " << *it; ++it; });
+	auto f = Overload([](std::vector<double>::const_iterator& it, auto output_func) { output_func(" ", *it, print::end<'\0'>()); ++it; },
+		[](std::vector<std::string>::const_iterator& it, auto output_func) { output_func(" ", it->c_str(), print::end<'\0'>()); ++it; });
 
 	for (size_t i = 0; i < size; ++i)
 	{
-		std::ostringstream oss;
 		for (auto& it : its)
 		{
-			it.Visit(f, oss);
+			it.Visit(f, output_func);
 		}
-		output_func(oss.str());
+		output_func("\n", print::end<>());
 	}
 }
 
-template <class GetX, class GetY>
-inline void MakeDataObjectCommon(std::function<void(std::string)> output_func, const Matrix<double>& map, GetX getx, GetY gety)
+template <class OutputFunc, class GetX, class GetY>
+inline void MakeDataObjectCommon(OutputFunc output_func, const Matrix<double>& map, GetX getx, GetY gety)
 {
 	uint32_t xsize = map.GetSize(0);
 	uint32_t ysize = map.GetSize(1);
@@ -423,13 +424,15 @@ inline void MakeDataObjectCommon(std::function<void(std::string)> output_func, c
 		{
 			double x = getx(ix);
 			double cx = getx.center(ix);
-			output_func(std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(cx)
-				+ " " + std::to_string(cy) + " " + std::to_string(map[ix][iy]));
+			//output_func(std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(cx)
+			//			+ " " + std::to_string(cy) + " " + std::to_string(map[ix][iy]));
+			output_func(x, y, cx, cy, map[ix][iy]);
 		}
 		double x = getx(xsize);
 		double cx = getx.center(xsize);
-		output_func(std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(cx)
-			+ " " + std::to_string(cy) + " 0\n");
+		//output_func(std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(cx)
+		//			+ " " + std::to_string(cy) + " 0\n");
+		output_func(x, y, cx, cy, " 0\n");
 	}
 	double y = gety(ysize);
 	double cy = gety.center(ysize);
@@ -437,13 +440,32 @@ inline void MakeDataObjectCommon(std::function<void(std::string)> output_func, c
 	{
 		double x = getx(ix);
 		double cx = getx.center(ix);
-		output_func(std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(cx)
-			+ " " + std::to_string(cy) + " 0");
+		//output_func(std::to_string(x) + " " + std::to_string(y) + " " + std::to_string(cx)
+		//			+ " " + std::to_string(cy) + " 0");
+		output_func(x, y, cx, cy, " 0");
 	}
-	output_func(std::to_string(getx(xsize)) + " " + std::to_string(y) + " " + std::to_string(getx.center(xsize))
-		+ " " + std::to_string(cy) + " 0");
+	//output_func(std::to_string(getx(xsize)) + " " + std::to_string(y) + " " + std::to_string(getx.center(xsize))
+	//			+ " " + std::to_string(cy) + " 0");
+	output_func(getx(xsize), y, getx.center(xsize), cy, " 0");
 }
-
+struct OutputFunc1
+{
+	template <class ...Args>
+	void operator()(Args&& ...args) const
+	{
+		g->Command(std::forward<Args>(args)...);
+	}
+	GPMCanvas* g;
+};
+struct OutputFunc2
+{
+	template <class ...Args>
+	void operator()(Args&& ...args)
+	{
+		Print(ofs, std::forward<Args>(args)...);
+	}
+	std::ofstream& ofs;
+};
 template <class ...Args>
 inline void MakeDataObject(GPMCanvas* g, const std::string& name, Args&& ...args)
 {
@@ -451,14 +473,17 @@ inline void MakeDataObject(GPMCanvas* g, const std::string& name, Args&& ...args
 	{
 		// make datablock
 		g->Command(name + " << EOD");
-		MakeDataObjectCommon([g](std::string str) { g->Command(str); }, std::forward<Args>(args)...);
+		OutputFunc1 output_func{ g };
+		MakeDataObjectCommon(output_func, std::forward<Args>(args)...);
 		g->Command("EOD");
 	}
-	else {
+	else
+	{
 		// make file
 		std::ofstream ofs(name);
 		if (!ofs) throw InvalidArg("file \"" + name + "\" cannot open.");
-		MakeDataObjectCommon([&ofs](std::string str) { ofs << str << "\n"; }, std::forward<Args>(args)...);
+		OutputFunc2 output_func{ ofs };
+		MakeDataObjectCommon(output_func, std::forward<Args>(args)...);
 	}
 }
 
@@ -1048,7 +1073,8 @@ inline GPMPlotBuffer2D<GraphParam> GPMPlotBuffer2D<GraphParam>::Plot(GraphParam&
 		{
 			i.mGraph = "$" + SanitizeForDataBlock(mCanvas->GetOutput()) + "_" + std::to_string(mParam.size()); // datablock name
 		}
-		else {
+		else
+		{
 			i.mGraph = mCanvas->GetOutput() + ".tmp" + std::to_string(mParam.size()) + ".txt";
 		}
 		auto GET_ARRAY = [](plot::ArrayData& X, const std::string& x,
@@ -1714,7 +1740,8 @@ inline GPMPlotBufferCM<GraphParam> GPMPlotBufferCM<GraphParam>::Plot(GraphParam&
 	{
 		i.mGraph = "$" + SanitizeForDataBlock(mCanvas->GetOutput()) + "_" + std::to_string(mParam.size()); // datablock name
 	}
-	else {
+	else
+	{
 		i.mGraph = mCanvas->GetOutput() + ".tmp" + std::to_string(mParam.size()) + ".txt";
 	}
 	auto GET_ARRAY = [](plot::ArrayData& X, const std::string& x,
@@ -2188,7 +2215,8 @@ inline std::string GPMPlotBufferCM<GraphParam>::PlotCommand(const GraphParam& p,
 			{
 				c += ", " + p.mGraph + "_cntr with line";
 			}
-			else {
+			else
+			{
 				std::string str = "'" + p.mGraph;
 				str.erase(str.end() - 3, str.end());
 				c += ", " + str + "cntr.txt' with line";
