@@ -11,6 +11,19 @@ namespace adapt
 inline namespace cuf
 {
 
+template <class Type, Type N>
+struct IntegralConstant
+{
+	static constexpr Type value = N;
+};
+template <bool B>
+using BoolConstant = IntegralConstant<bool, B>;
+template <size_t N>
+using IndexConstant = IntegralConstant<size_t, N>;
+
+using TrueType = BoolConstant<true>;
+using FalseType = BoolConstant<false>;
+
 //累乗計算クラス。ハッシュ化とか必要に応じて使おう。でもできればconstexpr欲しい。
 template <int base, int power>
 struct TPower
@@ -221,12 +234,6 @@ template <class ...T>
 struct TypeList;
 template <template <class...> class ...T>
 struct UnarguedList;
-
-template <size_t N>
-struct Number
-{
-	static constexpr size_t value = N;
-};
 
 namespace detail
 {
@@ -442,8 +449,13 @@ using CatTypeListT = typename CatTypeList<T...>::Type;
 
 template <size_t Index, class ...Types>
 struct GetFrontTypes;
-template <class ...Types>
-struct GetFrontTypes<0, Types...>
+template <>
+struct GetFrontTypes<0>
+{
+	using Type = TypeList<>;
+};
+template <class Head, class ...Types>
+struct GetFrontTypes<0, Head, Types...>
 {
 	using Type = TypeList<>;
 };

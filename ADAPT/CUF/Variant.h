@@ -38,24 +38,24 @@ struct VariantStorer_impl<Index, Storage_, Head, Body...> : public VariantStorer
 	using Base::Assign;
 
 	template <class ...Args>
-	static void Emplace(Number<Index>, Storage& s, Args&& ...args)
+	static void Emplace(IndexConstant<Index>, Storage& s, Args&& ...args)
 	{
 		new (&s.mStorage) Head(std::forward<Args>(args)...);
 		s.mIndex = Index;
 	}
 	using Base::Emplace;
 
-	static Head& Get(Number<Index>, Storage& s)
+	static Head& Get(IndexConstant<Index>, Storage& s)
 	{
 		return (*reinterpret_cast<Head*>(&s.mStorage));
 	}
-	static const Head& Get(Number<Index>, const Storage& s)
+	static const Head& Get(IndexConstant<Index>, const Storage& s)
 	{
 		return (*reinterpret_cast<const Head*>(&s.mStorage));
 	}
 	using Base::Get;
 
-	static void Destroy(Number<Index>, Storage& s)
+	static void Destroy(IndexConstant<Index>, Storage& s)
 	{
 		(reinterpret_cast<Head&>(s.mStorage)).~Head();
 		s.mIndex = Storage::Size;
@@ -142,7 +142,7 @@ private:
 	{
 		static void apply(Variant<Types...>& v)
 		{
-			Storer::Destroy(Number<Index>(), v);
+			Storer::Destroy(IndexConstant<Index>(), v);
 		}
 	};
 
@@ -154,7 +154,7 @@ private:
 		template <class T = Type, EnableIfT<std::is_copy_constructible<T>::value> = nullptr>
 		static void apply(Variant<Types...>& self, const Variant<Types...>& other)
 		{
-			Storer::Emplace(Number<Index>(), self, other.Get<Index>());
+			Storer::Emplace(IndexConstant<Index>(), self, other.Get<Index>());
 		}
 		//コピー不可であるときは例外を投げる。
 		template <class T = Type, EnableIfT<!std::is_copy_constructible<T>::value> = nullptr>
@@ -171,7 +171,7 @@ private:
 		template <class T = Type, EnableIfT<std::is_move_constructible<T>::value> = nullptr>
 		static void apply(Variant<Types...>& self, Variant<Types...>&& other)
 		{
-			Storer::Emplace(Number<Index>(), self, std::move(other.Get<Index>()));
+			Storer::Emplace(IndexConstant<Index>(), self, std::move(other.Get<Index>()));
 			//self = std::move(other.Get<Index>());
 			other.Destroy();
 		}
@@ -260,13 +260,13 @@ public:
 	void Emplace(Args&& ...args)
 	{
 		Destroy();
-		Storer::Emplace(Number<TypetoIndex<Type>::Index>(), *this, std::forward<Args>(args)...);
+		Storer::Emplace(IndexConstant<TypetoIndex<Type>::Index>(), *this, std::forward<Args>(args)...);
 	}
 	template <std::size_t Index, class ...Args, EnableIfT<(Index < Size)> = nullptr>
 	void Emplace(Args&& ...args)
 	{
 		Destroy();
-		Storer::Emplace(Number<Index>(), *this, std::forward<Args>(args)...);
+		Storer::Emplace(IndexConstant<Index>(), *this, std::forward<Args>(args)...);
 	}
 
 	template <class Type>
@@ -281,13 +281,13 @@ public:
 	std::enable_if_t<(Index < Size), IndextoType<Index>>& Get()
 	{
 		if (this->mIndex != Index) throw InvalidType("Bad Variant access");
-		return Storer::Get(Number<Index>(), *this);
+		return Storer::Get(IndexConstant<Index>(), *this);
 	}
 	template <std::size_t Index>
 	std::enable_if_t<(Index < Size), const IndextoType<Index>>& Get() const
 	{
 		if (this->mIndex != Index) throw InvalidType("Bad Variant access");
-		return Storer::Get(Number<Index>(), *this);
+		return Storer::Get(IndexConstant<Index>(), *this);
 	}
 
 	template <class Type>
@@ -304,12 +304,12 @@ public:
 	template <std::size_t Index>
 	std::enable_if_t<(Index < Size), IndextoType<Index>>& Get_unsafe()
 	{
-		return Storer::Get(Number<Index>(), *this);
+		return Storer::Get(IndexConstant<Index>(), *this);
 	}
 	template <std::size_t Index>
 	std::enable_if_t<(Index < Size), const IndextoType<Index>>& Get_unsafe() const
 	{
-		return Storer::Get(Number<Index>(), *this);
+		return Storer::Get(IndexConstant<Index>(), *this);
 	}
 
 	template <class Type>

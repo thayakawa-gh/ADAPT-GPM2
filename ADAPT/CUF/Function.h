@@ -142,11 +142,11 @@ constexpr auto CatArray_impl(Array1&& a, std::index_sequence<Indices1...>,
 	constexpr size_t N2 = detail::GetArraySize<Array2>();
 	using Type = typename std::decay_t<Array1>::value_type;
 	static_assert(std::is_same<Type, typename std::decay_t<Array2>::value_type>::value, "");
+#if __cplusplus >= 201703L
 	constexpr bool L1 = std::is_lvalue_reference<Array1>::value;
 	constexpr bool L2 = std::is_lvalue_reference<Array2>::value;
-#if __cplusplus >= 201703L
 	return std::array<Type, N1 + N2>{ Forward<!L1>(a[Indices1])..., Forward<!L2>(b[Indices2])... };
-#else if __cplusplus >= 201402L
+#elif __cplusplus >= 201402L
 	return std::array<Type, N1 + N2>{ static_cast<const std::remove_reference_t<Array1>&>(a)[Indices1]...,
 									  static_cast<const std::remove_reference_t<Array2>&>(b)[Indices2]... };
 #endif

@@ -574,7 +574,7 @@ GET_FMT_SPEC(long double, '%', 'l', 'f');
 GET_FMT_SPEC(char, '%', 'c');
 GET_FMT_SPEC(short, '%', 'h', 'd');
 GET_FMT_SPEC(int, '%', 'd');
-GET_FMT_SPEC(long, '%', 'ld');
+GET_FMT_SPEC(long, '%', 'l', 'd');
 GET_FMT_SPEC(long long, '%', 'l', 'l', 'd');
 GET_FMT_SPEC(unsigned short, '%', 'h', 'u');
 GET_FMT_SPEC(unsigned int, '%', 'u');
@@ -708,7 +708,7 @@ void Print(std::ostream& ost, Args&& ...args)
 	constexpr auto e = std::get<1>(t);
 	constexpr bool f = std::get<2>(t);
 	constexpr int n = std::get<3>(t);
-	Apply(detail::PrintToStream(), std::tuple_cat(std::forward_as_tuple(ost, d, e, std::bool_constant<f>()), GetFrontArgs<n>(std::forward<Args>(args)...)));
+	Apply(detail::PrintToStream(), std::tuple_cat(std::forward_as_tuple(ost, d, e, BoolConstant<f>()), GetFrontArgs<n>(std::forward<Args>(args)...)));
 }
 
 }
