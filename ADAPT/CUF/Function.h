@@ -138,18 +138,13 @@ template <class Array1, size_t ...Indices1, class Array2, size_t ...Indices2>
 constexpr auto CatArray_impl(Array1&& a, std::index_sequence<Indices1...>,
 							 Array2&& b, std::index_sequence<Indices2...>)
 {
-	constexpr size_t N1 = detail::GetArraySize<Array1>();
-	constexpr size_t N2 = detail::GetArraySize<Array2>();
 	using Type = typename std::decay_t<Array1>::value_type;
 	static_assert(std::is_same<Type, typename std::decay_t<Array2>::value_type>::value, "");
-#if __cplusplus >= 201703L
+	constexpr size_t N1 = detail::GetArraySize<Array1>();
+	constexpr size_t N2 = detail::GetArraySize<Array2>();
 	constexpr bool L1 = std::is_lvalue_reference<Array1>::value;
 	constexpr bool L2 = std::is_lvalue_reference<Array2>::value;
 	return std::array<Type, N1 + N2>{ Forward<!L1>(a[Indices1])..., Forward<!L2>(b[Indices2])... };
-#elif __cplusplus >= 201402L
-	return std::array<Type, N1 + N2>{ static_cast<const std::remove_reference_t<Array1>&>(a)[Indices1]...,
-									  static_cast<const std::remove_reference_t<Array2>&>(b)[Indices2]... };
-#endif
 }
 }
 
@@ -161,10 +156,8 @@ constexpr Array CatArray(Array&& a)
 template <class Array1, class Array2>
 constexpr auto CatArray(Array1&& a, Array2&& b)
 {
-	constexpr size_t N1 = detail::GetArraySize<Array1>();
-	constexpr size_t N2 = detail::GetArraySize<Array2>();
-	return detail::CatArray_impl(std::forward<Array1>(a), std::make_index_sequence<N1>(),
-								 std::forward<Array2>(b), std::make_index_sequence<N2>());
+	return detail::CatArray_impl(std::forward<Array1>(a), std::make_index_sequence<detail::GetArraySize<Array1>()>(),
+								 std::forward<Array2>(b), std::make_index_sequence<detail::GetArraySize<Array2>()>());
 }
 
 namespace detail
@@ -198,10 +191,18 @@ std::array<
 		sizeof...(Args)>{ std::forward<Args>(args)... };
 }
 
+template <class Arithmetic, class Int,
+	std::enable_if_t<std::is_arithmetic_v<Arithmetic> && std::is_integral_v<Int>, std::nullptr_t> = nullptr>
+constexpr Arithmetic IntPow(Arithmetic x, Int y)
+{
+	if (y > 0) return x * IntPow(x, y - 1);
+	return x;
+}
+
 namespace detail
 {
 template <class Func, class T>
-constexpr auto Accumulate_impl(Func f, T&& a)
+constexpr auto Accumulate_impl(Func, T&& a)
 {
 	return a;
 }

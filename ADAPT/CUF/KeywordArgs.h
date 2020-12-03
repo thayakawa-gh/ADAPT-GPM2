@@ -129,8 +129,8 @@ struct GetKeywordArg_impl<std::numeric_limits<std::size_t>::max()>
 template <class Type>
 struct IsKeyword_impl
 {
-	static const bool value = IsBasedOn_T<RemoveCVRefT<Type>, detail::KeywordName>::value ||
-		IsBasedOn_T<RemoveCVRefT<Type>, detail::KeywordValue>::value;
+	static const bool value = IsBasedOn_XT<RemoveCVRefT<Type>, detail::KeywordName>::value ||
+		IsBasedOn_XT<RemoveCVRefT<Type>, detail::KeywordValue>::value;
 };
 template <class Type>
 struct IsKeyword

@@ -468,6 +468,7 @@ inline void Format_impl(std::string& result,
 					AddArg(result, it, itend);
 				break;
 			}
+			[[fallthrough]];
 		default:
 			result += *it;
 			++it;
@@ -491,6 +492,7 @@ void Format_impl(std::string& result,
 					AddArg(result, it, itend, value);
 				return Format_impl(result, it, itend, values...);
 			}
+			[[fallthrough]];
 		default:
 			result += *it;
 			++it;
@@ -540,8 +542,7 @@ private:
 	template <int C, size_t ...Indices>
 	static constexpr auto Get_impl(std::index_sequence<Indices...>)
 	{
-		constexpr size_t Len = GetCharLen(C);
-		return std::array<char, Len>{ char(C >> (8 * (Len - Indices - 1)))... };
+		return std::array<char, GetCharLen(C)>{ char(C >> (8 * (GetCharLen(C) - Indices - 1)))... };
 	}
 };
 template <>
@@ -555,12 +556,14 @@ struct Character<>
 template <int ...Del> struct Delimiter : public Character<Del...> {};
 template <int ...E> struct End : public Character<E...> {};
 
-struct Flush {};
+template <int B>
+struct Flush
+{};
 
 }
 
 template <class Type_>
-struct GetFmtSpec_ { static constexpr bool apply() { return true; } };
+struct GetFmtSpec_ { static constexpr void apply() {} };
 template <class Type>
 struct GetFmtSpec_<Type*> { static constexpr auto apply() { return std::array<char, 2>{ '%', 'p' }; } };
 
@@ -585,63 +588,78 @@ GET_FMT_SPEC(char*, '%', 's');
 GET_FMT_SPEC(std::string, '%', 's');
 #undef GET_FMT_SPEC
 
-template <class Head, class ...Args, std::enable_if_t<IsBasedOn_XN<Head, print::Delimiter>::value, std::nullptr_t> = nullptr>
+template <class ...Args>
 constexpr auto GetOptions();
-template <class Head, class ...Args, std::enable_if_t<IsBasedOn_XN<Head, print::End>::value, std::nullptr_t> = nullptr>
-constexpr auto GetOptions();
-template <class Head, class ...Args, std::enable_if_t<std::is_same<Head, print::Flush>::value, std::nullptr_t> = nullptr>
-constexpr auto GetOptions();
-template <class Head, class ...Args, typename decltype(GetFmtSpec<Head>())::value_type = '\0'>
-constexpr auto GetOptions();
-template <class ...Args, std::enable_if_t<sizeof...(Args) == 0, std::nullptr_t> = nullptr>
+template <class Args>
+struct GetOptions_impl;
+template <>
+struct GetOptions_impl<TypeList<>>
+{
+	static constexpr auto apply()
+	{
+		return std::make_tuple(print::Delimiter<' '>(), print::End<'\n'>(), FalseType(), IndexConstant<0>());
+	}
+};
+template <class Head, class ...Args>
+struct GetOptions_impl<TypeList<Head, Args...>>
+{
+	static constexpr auto apply()
+	{
+		constexpr auto t = GetOptions_impl<TypeList<Args...>>::apply();
+		return std::make_tuple(std::get<0>(t), std::get<1>(t), std::get<2>(t), std::get<3>(t) + IndexConstant<1>());
+	}
+};
+template <int ...Int, class ...Args>
+struct GetOptions_impl<TypeList<print::Delimiter<Int...>, Args...>>
+{
+	static constexpr auto apply()
+	{
+		constexpr auto t = GetOptions_impl<TypeList<Args...>>::apply();
+		return std::make_tuple(print::Delimiter<Int...>(), std::get<1>(t), std::get<2>(t), std::get<3>(t));
+	}
+};
+template <int ...Int, class ...Args>
+struct GetOptions_impl<TypeList<print::End<Int...>, Args...>>
+{
+	static constexpr auto apply()
+	{
+		constexpr auto t = GetOptions_impl<TypeList<Args...>>::apply();
+		return std::make_tuple(std::get<0>(t), print::End<Int...>(), std::get<2>(t), std::get<3>(t));
+	}
+};
+template <bool B, class ...Args>
+struct GetOptions_impl<TypeList<print::Flush<B>, Args...>>
+{
+	static constexpr auto apply()
+	{
+		constexpr auto t = GetOptions_impl<TypeList<Args...>>::apply();
+		return std::make_tuple(std::get<0>(t), std::get<1>(t), BoolConstant<B>(), std::get<3>(t));
+	}
+};
+template <class ...Args>
 constexpr auto GetOptions()
 {
-	return std::make_tuple(print::Delimiter<' '>(), print::End<'\n'>(), false, 0);
-}
-template <class Head, class ...Args, std::enable_if_t<IsBasedOn_XN<Head, print::Delimiter>::value, std::nullptr_t>>
-constexpr auto GetOptions()
-{
-	auto t = GetOptions<Args...>();
-	return std::make_tuple(Head(), std::get<1>(t), std::get<2>(t), std::get<3>(t));
-}
-template <class Head, class ...Args, std::enable_if_t<IsBasedOn_XN<Head, print::End>::value, std::nullptr_t>>
-constexpr auto GetOptions()
-{
-	auto t = GetOptions<Args...>();
-	return std::make_tuple(std::get<0>(t), Head(), std::get<2>(t), std::get<3>(t));
-}
-template <class Head, class ...Args, std::enable_if_t<std::is_same<Head, print::Flush>::value, std::nullptr_t>>
-constexpr auto GetOptions()
-{
-	auto t = GetOptions<Args...>();
-	return std::make_tuple(std::get<0>(t), std::get<1>(t), true, std::get<3>(t));
-}
-template <class Head, class ...Args, typename decltype(GetFmtSpec<Head>())::value_type>
-constexpr auto GetOptions()
-{
-	auto t = GetOptions<Args...>();
-	return std::make_tuple(std::get<0>(t), std::get<1>(t), std::get<2>(t), std::get<3>(t) + 1);
+	return GetOptions_impl<TypeList<Args...>>::apply();
 }
 
-template <bool F>
+template <class F>
 inline void Flush(FILE* fp) { fflush(fp); }
 template <>
-inline void Flush<false>(FILE*) {}
-template <bool F>
+inline void Flush<FalseType>(FILE*) {}
+template <class F>
 inline void Flush(std::ostream& ost) { ost << std::flush; }
 template <>
-inline void Flush<false>(std::ostream&) {}
+inline void Flush<FalseType>(std::ostream&) {}
 
 template <class Del, class End>
 constexpr auto MakeFormatStr_rec()
 {
 	return CatArray(End::Get(), std::array<char, 1>{ '\0' });
 }
-template <class Del, class End, class Head, class ...Args, typename decltype(GetFmtSpec<Head>())::value_type = '\0'>
+template <class Del, class End, class Head, class ...Args, std::enable_if_t<!std::is_void<decltype(GetFmtSpec<Head>())>::value, std::nullptr_t> = nullptr>
 constexpr auto MakeFormatStr_rec()
 {
-	auto t = MakeFormatStr_rec<Del, End, Args...>();
-	return CatArray(Del::Get(), GetFmtSpec<Head>(), t);
+	return CatArray(Del::Get(), GetFmtSpec<Head>(), MakeFormatStr_rec<Del, End, Args...>());
 }
 
 template <class Del, class End, class Args>
@@ -651,8 +669,7 @@ struct MakeFormatStr<Del, End, TypeList<Head, Args...>>
 {
 	static constexpr auto apply()
 	{
-		auto t = MakeFormatStr_rec<Del, End, Args...>();
-		return CatArray(GetFmtSpec<Head>(), t);
+		return CatArray(GetFmtSpec<Head>(), MakeFormatStr_rec<Del, End, Args...>());
 	}
 };
 
@@ -662,7 +679,7 @@ struct PrintToStream
 	void operator()(std::ostream& ost, Del, End, Fls, Head&& head) const
 	{
 		ost << std::forward<Head>(head) << CatArray(End::Get(), std::array<char, 1>{ '\0' }).data();
-		Flush<Fls::value>(ost);
+		Flush<Fls>(ost);
 	}
 	template <class Del, class End, class Fls, class Head, class ...Args, std::enable_if_t<sizeof...(Args) != 0, std::nullptr_t> = nullptr>
 	void operator()(std::ostream& ost, Del d, End e, Fls f, Head&& head, Args&& ...args) const
@@ -685,7 +702,8 @@ template <int ...N>
 constexpr detail::print::Delimiter<N...> delim() { return detail::print::Delimiter<N...>(); };
 template <int ...N>
 constexpr detail::print::End<N...> end() { return detail::print::End<N...>(); };
-constexpr detail::print::Flush flush;
+template <bool B>
+constexpr detail::print::Flush<B> flush() { return detail::print::Flush<B>(); };
 }
 
 template <class ...Args>
@@ -694,11 +712,11 @@ void Print(FILE* fp, Args&& ...args)
 	constexpr auto t = detail::GetOptions<std::decay_t<Args>...>();
 	constexpr auto d = std::get<0>(t);
 	constexpr auto e = std::get<1>(t);
-	constexpr bool f = std::get<2>(t);
-	constexpr int n = std::get<3>(t);
+	constexpr auto f = std::get<2>(t);
+	constexpr size_t n = std::get<3>(t).value;
 	constexpr auto fmt = detail::MakeFormatStr<decltype(d), decltype(e), GetFrontTypesT<n, std::decay_t<Args>...>>::apply();
 	Apply(&fprintf, std::tuple_cat(std::make_tuple(fp), std::make_tuple(fmt.data()), GetFrontArgs<n>(detail::ConvStringToCharPtr(std::forward<Args>(args))...)));
-	detail::Flush<f>(fp);
+	detail::Flush<decltype(f)>(fp);
 }
 template <class ...Args>
 void Print(std::ostream& ost, Args&& ...args)
@@ -706,9 +724,9 @@ void Print(std::ostream& ost, Args&& ...args)
 	constexpr auto t = detail::GetOptions<std::decay_t<Args>...>();
 	constexpr auto d = std::get<0>(t);
 	constexpr auto e = std::get<1>(t);
-	constexpr bool f = std::get<2>(t);
-	constexpr int n = std::get<3>(t);
-	Apply(detail::PrintToStream(), std::tuple_cat(std::forward_as_tuple(ost, d, e, BoolConstant<f>()), GetFrontArgs<n>(std::forward<Args>(args)...)));
+	constexpr auto f = std::get<2>(t).value;
+	constexpr auto n = std::get<3>(t).value;
+	Apply(detail::PrintToStream(), std::tuple_cat(std::forward_as_tuple(ost, d, e, f), GetFrontArgs<n>(std::forward<Args>(args)...)));
 }
 
 }

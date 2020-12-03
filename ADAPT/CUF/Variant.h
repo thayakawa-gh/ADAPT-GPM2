@@ -99,7 +99,7 @@ struct VariantStorage
 	static constexpr std::size_t Align = StorageSize::Align;
 	using Storage = std::aligned_storage_t<Length, Align>;
 
-	VariantStorage() : mIndex(Size) {}
+	VariantStorage() : mIndex(Size), mStorage{} {}
 
 protected:
 	std::size_t mIndex;
@@ -220,7 +220,7 @@ public:
 			TabulationSwitch<Size, Copy_impl>(other.mIndex, *this, other);
 		//otherが空の場合、自分も今現在空なので何もしなくていい。
 	}
-	Variant(Variant<Types...>&& other)
+	Variant(Variant<Types...>&& other) noexcept
 	{
 		if (!other.IsEmpty())
 			TabulationSwitch<Size, Move_impl>(other.mIndex, *this, std::move(other));
@@ -239,7 +239,7 @@ public:
 			TabulationSwitch<Size, Copy_impl>(other.mIndex, *this, other);
 		return *this;
 	}
-	Variant<Types...>& operator=(Variant<Types...>&& other)
+	Variant<Types...>& operator=(Variant<Types...>&& other) noexcept
 	{
 		Destroy();
 		if (!other.IsEmpty())

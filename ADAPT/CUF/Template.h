@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <limits>
+#include <tuple>
 
 namespace adapt
 {
@@ -15,6 +16,10 @@ template <class Type, Type N>
 struct IntegralConstant
 {
 	static constexpr Type value = N;
+	constexpr IntegralConstant<Type, Type(N + 1)> operator++() const { return IntegralConstant<Type, Type(N + 1)>(); }
+	constexpr IntegralConstant<Type, Type(N - 1)> operator--() const { return IntegralConstant<Type, Type(N - 1)>(); }
+	template <Type M>
+	constexpr IntegralConstant<Type, Type(N + M)> operator+(IntegralConstant<Type, M>) const { return IntegralConstant<Type, Type(N + M)>(); }
 };
 template <bool B>
 using BoolConstant = IntegralConstant<bool, B>;
@@ -25,7 +30,7 @@ using TrueType = BoolConstant<true>;
 using FalseType = BoolConstant<false>;
 
 //累乗計算クラス。ハッシュ化とか必要に応じて使おう。でもできればconstexpr欲しい。
-template <int base, int power>
+/*template <int base, int power>
 struct TPower
 {
 	static_assert(power >= 0, "power must be equal or larger than 0");
@@ -46,7 +51,7 @@ template <int N>
 struct IntSum<N>
 {
 	static constexpr int value = N;
-};
+};*/
 
 //C++20のstd::type_identityの代用。
 template <class T>
@@ -57,103 +62,53 @@ struct Identity
 template <class T>
 using IdentityT = typename Identity<T>::Type;
 
-template <class Derived, class Base>
-class IsBasedOn
-{
-private:
-	typedef char  Yes;
-	typedef struct { char c[2]; } No;
-
-	static constexpr Yes check(const Base&);
-	static constexpr No  check(...);
-
-	static const Derived& d;
-public:
-	static constexpr bool value = sizeof(check(d)) == sizeof(Yes);
-};
-template <class Base>
-class IsBasedOn<void, Base>
-{
-public:
-	static constexpr bool value = false;
-};
-
-template <class Derived, template <class ...> class Base>
+template <class Derived, template <class> class Base>
 class IsBasedOn_T
 {
 private:
-	typedef char  Yes;
-	typedef struct { char c[2]; } No;
+	template <class U>
+	static constexpr TrueType check(const Base<U>*);
+	static constexpr FalseType check(const void*);
 
+	static const Derived* d;
+public:
+	static constexpr bool value = decltype(check(d))::value;
+};
+template <class Derived, template <class...> class Base>
+class IsBasedOn_XT
+{
+private:
 	template <class ...U>
-	static constexpr Yes check(const Base<U...>&);
-	static constexpr No  check(...);
+	static constexpr TrueType check(const Base<U...>*);
+	static constexpr FalseType check(const void*);
 
-	static const Derived& d;
+	static const Derived* d;
 public:
-	static constexpr bool value = sizeof(check(d)) == sizeof(Yes);
+	static constexpr bool value = decltype(check(d))::value;
 };
-template <template <class ...> class Base>
-class IsBasedOn_T<void, Base>
-{
-public:
-	static constexpr bool value = false;
-};
-template <class Derived, template <int, class...> class Base>
-class IsBasedOn_NT
+template <class Derived, template <auto> class Base>
+class IsBasedOn_N
 {
 private:
-	typedef char  Yes;
-	typedef struct { char c[2]; } No;
+	template <auto N>
+	static constexpr TrueType check(const Base<N>*);
+	static constexpr FalseType check(const void*);
 
-	template <int N>
-	static constexpr Yes check(const Base<N>&);
-	//本来はこちらの形式が正しいのだが、
-	//Visual Studioのバグか、コンパイル時に"パラメータ展開できねぇよ"と文句を言われる。
-	//テンプレート周りがゴミカスなVS2015なので仕方ない。
-	//template <int N, class ...U>
-	//static const Yes check(const Base<N, U...>&);
-	static constexpr No  check(...);
-
-	static const Derived& d;
+	static const Derived* d;
 public:
-	static constexpr bool value = sizeof(check(d)) == sizeof(Yes);
+	static constexpr bool value = decltype(check(d))::value;
 };
-template <template <int, class ...> class Base>
-class IsBasedOn_NT<void, Base>
-{
-public:
-	static constexpr bool value = false;
-};
-template <class Derived, template <int, std::size_t, class...> class Base>
-class IsBasedOn_NNT
+template <class Derived, template <auto, auto> class Base>
+class IsBasedOn_NN
 {
 private:
-	typedef char  Yes;
-	typedef struct { char c[2]; } No;
+	template <auto N, auto M>
+	static constexpr TrueType check(const Base<N, M>*);
+	static constexpr FalseType check(const void*);
 
-	template <int N, int M, class ...U>
-	static constexpr Yes check(const Base<N, M, U...>&);
-	static constexpr No  check(...);
-
-	static const Derived& d;
+	static const Derived* d;
 public:
-	static constexpr bool value = sizeof(check(d)) == sizeof(Yes);
-};
-template <class Derived, template <int...> class Base>
-class IsBasedOn_XN
-{
-private:
-	typedef char  Yes;
-	typedef struct { char c[2]; } No;
-
-	template <int ...N>
-	static constexpr Yes check(const Base<N...>&);
-	static constexpr No check(...);
-
-	static const Derived& d;
-public:
-	static constexpr bool value = sizeof(check(d)) == sizeof(Yes);
+	static constexpr bool value = decltype(check(d))::value;
 };
 
 //template <...> class T : public Base<0, ...>の形で可変長引数テンプレートのメンバを持つクラスに対し、
@@ -192,7 +147,7 @@ template <std::size_t RoopNum, std::size_t N, template <std::size_t CastN> class
 struct StaticRoop_impl<RoopNum, N, Functor, false>
 {
 	template <class ...Args>
-	inline static void apply(Args&& ...args)
+	inline static void apply(Args&& ...)
 	{}
 };
 template <std::size_t RoopNum, template <std::size_t CastN> class Functor, class ...Args>
@@ -204,7 +159,7 @@ inline void StaticRoop(Args&& ...args)
 //FlexibleSwitchは再帰処理で非効率なので、関数ポインタテーブル版を新たに作りたい。
 
 template <class ...Types>
-void WrapSequence(Types&& ...types)
+void WrapSequence(Types&& ...)
 {}
 
 //あるクラスがメンバ関数MemFuncを持つかどうかを判定するHasMemFunc_##MemFunc、
@@ -506,10 +461,10 @@ struct GetFrontArgs_impl<0>
 	}
 };
 }
-template <size_t Index, class ...Args>
+template <size_t Size, class ...Args>
 static constexpr auto GetFrontArgs(Args&& ...args)
 {
-	return detail::GetFrontArgs_impl<Index>::apply(std::forward<Args>(args)...);
+	return detail::GetFrontArgs_impl<Size>::apply(std::forward<Args>(args)...);
 }
 
 template <class Type_>

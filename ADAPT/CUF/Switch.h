@@ -60,7 +60,7 @@ template <std::size_t SwitchNum, std::size_t N, class Result, template <std::siz
 	struct FixedLengthSwitch_wrapper<SwitchNum, N, Result, Functor, false>
 	{
 		template <class ...Args>
-		static Result apply(Args&& ...args)
+		static Result apply(Args&& ...)
 		{
 			throw OutOfRange("");
 		}
