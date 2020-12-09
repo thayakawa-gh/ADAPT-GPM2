@@ -6,7 +6,7 @@
 
 int main()
 {
-	//Default GNUPLOT path is "C:/Progra~1/gnuplot/bin/gnuplot.exe" for windows, and "gnuplot" for the other envitonments.
+	//Default GNUPLOT path is "C:/Progra~1/gnuplot/bin/gnuplot.exe" for windows, and "gnuplot" for the other environments.
 	//There are 2 ways to overwrite it.
 	//1. Call function "GPMCanvas::SetGnuplotPath("path to gnuplot")".
 	//2. Define environment variable "GNUPLOT_PATH=path to gnuplot".

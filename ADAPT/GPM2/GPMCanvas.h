@@ -1863,14 +1863,30 @@ public:
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
 	_Buffer PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
+	_Buffer PlotPoints(const std::string& filename,
+					   const std::string& x, const std::string& y, const std::string& z,
+					   Options ...ops);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
 	_Buffer PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
+	_Buffer PlotPoints(const std::string& filename,
+					   const std::string& x, const std::string& y,
+					   Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
 	_Buffer PlotPoints(const std::string& equation, Options ...ops);
 
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
 	_Buffer PlotLines(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
+	_Buffer PlotLines(const std::string& filename,
+					  const std::string& x, const std::string& y, const std::string& z,
+					  Options ...ops);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
 	_Buffer PlotLines(const std::vector<double>& x, const std::vector<double>& y, Options ...ops);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
+	_Buffer PlotLines(const std::string& filename,
+					  const std::string& x, const std::string& y,
+					  Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
 	_Buffer PlotLines(const std::string& equation, Options ...ops);
 
@@ -1879,8 +1895,18 @@ public:
 						const std::vector<double>& xlen, const std::vector<double>& ylen, const std::vector<double>& zlen,
 						Options ...ops);
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Vector3DOption)>
+	_Buffer PlotVectors(const std::string& filename,
+						const std::string& xfrom, const std::string& yfrom, const std::string& zfrom,
+						const std::string& xlen, const std::string& ylen, const std::string& zlen,
+						Options ...ops);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Vector3DOption)>
 	_Buffer PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
 						const std::vector<double>& xlen, const std::vector<double>& ylen,
+						Options ...ops);
+	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Vector3DOption)>
+	_Buffer PlotVectors(const std::string& filename,
+						const std::string& xfrom, const std::string& yfrom,
+						const std::string& xlen, const std::string& ylen,
 						Options ...ops);
 
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::ColormapOption)>
@@ -2682,10 +2708,30 @@ PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std
 template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
 inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotPoints(const std::string& filename,
+		   const std::string& x, const std::string& y, const std::string& z,
+		   Options ...ops)
+{
+	_Buffer p(this);
+	return p.PlotPoints(filename, x, y, z, ops...);
+}
+template <class GraphParam, template <class> class Buffer>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
 PlotPoints(const std::vector<double>& x, const std::vector<double>& y, Options ...ops)
 {
 	_Buffer p(this);
 	return p.PlotPoints(x, y, ops...);
+}
+template <class GraphParam, template <class> class Buffer>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotPoints(const std::string& filename,
+		   const std::string& x, const std::string& y,
+		   Options ...ops)
+{
+	_Buffer p(this);
+	return p.PlotPoints(filename, x, y, ops...);
 }
 template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
@@ -2707,10 +2753,30 @@ PlotLines(const std::vector<double>& x, const std::vector<double>& y, const std:
 template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
 inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotLines(const std::string& filename,
+		  const std::string& x, const std::string& y, const std::string& z,
+		  Options ...ops)
+{
+	_Buffer p(this);
+	return p.PlotLines(filename, x, y, z, ops...);
+}
+template <class GraphParam, template <class> class Buffer>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
 PlotLines(const std::vector<double>& x, const std::vector<double>& y, Options ...ops)
 {
 	_Buffer p(this);
 	return p.PlotLines(x, y, ops...);
+}
+template <class GraphParam, template <class> class Buffer>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotLines(const std::string& filename,
+		  const std::string& x, const std::string& y,
+		  Options ...ops)
+{
+	_Buffer p(this);
+	return p.PlotLines(filename, x, y, ops...);
 }
 template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
@@ -2734,6 +2800,17 @@ PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom, 
 template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
 inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotVectors(const std::string& filename,
+			const std::string& xfrom, const std::string& yfrom, const std::string& zfrom,
+			const std::string& xlen, const std::string& ylen, const std::string& zlen,
+			Options ...ops)
+{
+	_Buffer p(this);
+	return p.PlotVectors(filename, xfrom, yfrom, zfrom, xlen, ylen, zlen, ops...);
+}
+template <class GraphParam, template <class> class Buffer>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
 PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
 			const std::vector<double>& xlen, const std::vector<double>& ylen,
 			Options ...ops)
@@ -2741,6 +2818,18 @@ PlotVectors(const std::vector<double>& xfrom, const std::vector<double>& yfrom,
 	_Buffer p(this);
 	return p.PlotVectors(xfrom, yfrom, xlen, ylen, ops...);
 }
+template <class GraphParam, template <class> class Buffer>
+template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
+inline Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
+PlotVectors(const std::string& filename,
+			const std::string& xfrom, const std::string& yfrom,
+			const std::string& xlen, const std::string& ylen,
+			Options ...ops)
+{
+	_Buffer p(this);
+	return p.PlotVectors(filename, xfrom, yfrom, xlen, ylen, ops...);
+}
+
 template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
 Buffer<GraphParam> GPMCanvasCM<GraphParam, Buffer>::
