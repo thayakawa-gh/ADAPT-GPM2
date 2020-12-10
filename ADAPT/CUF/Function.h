@@ -18,12 +18,29 @@ namespace adapt
 inline namespace cuf
 {
 
+inline std::string GetEnv(const std::string& env)
+{
+#ifdef _WIN32
+	char* buf;
+	size_t size = 1024;
+	if (_dupenv_s(&buf, &size, env.c_str()) != 0)
+	{
+		std::string res(buf);
+		free(buf);
+		return res;
+	}
+#else
+	if (const char* p = std::getenv(env.c_str())) return std::string(p);
+#endif
+	return std::string();
+}
+
 //string中のfrom文字をto文字へと置き換える関数。
 inline std::string ReplaceStr(const std::string& str, const std::string& from, const std::string& to)
 {
 	std::string res = str;
 	std::string::size_type pos = 0;
-	while (pos = res.find(from, pos), pos != std::string::npos)
+	while ((void)(pos = res.find(from, pos)), pos != std::string::npos)
 	{
 		res.replace(pos, from.length(), to);
 		pos += to.length();
@@ -58,13 +75,6 @@ inline void DelSpace(std::string &str)
 	{
 		str.erase(i, 1);
 	}
-}
-inline unsigned int GetSeed()
-{
-	static std::mutex m;
-	static std::random_device rd;
-	std::lock_guard<std::mutex> lg(m);
-	return rd();
 }
 template <class Type>
 std::vector<Type> UniqueRandom(Type min, Type max, Type num)
@@ -266,7 +276,7 @@ constexpr auto EqualAll_impl(T1&& v1, T2&& v2, T&& ...v)
 		EqualAll_impl(std::forward<T2>(v2), std::forward<T>(v)...);
 }
 template <class T>
-constexpr auto EqualAll_impl(T&& v) { return true; }
+constexpr auto EqualAll_impl(T&&) { return true; }
 
 }
 //任意数の引数について、隣り合う二つをすべての組み合わせ（sizeof...(T) - 1通り）で比較し、

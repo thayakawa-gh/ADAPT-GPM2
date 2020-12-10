@@ -154,7 +154,7 @@ template <std::size_t RoopNum, template <std::size_t CastN> class Functor, class
 inline void StaticRoop(Args&& ...args)
 {
 	StaticRoop_impl<RoopNum, 0, Functor>::apply(std::forward<Args>(args)...);
-};
+}
 
 //FlexibleSwitchは再帰処理で非効率なので、関数ポインタテーブル版を新たに作りたい。
 

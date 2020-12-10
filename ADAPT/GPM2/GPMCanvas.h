@@ -18,7 +18,7 @@ namespace adapt
 namespace gpm2
 {
 
-class GPMMultiPlotter;
+class GPMMultiPlot;
 
 enum class Style { none, lines, points, linespoints, dots, impulses, boxes, steps, fsteps, histeps, };
 enum class Smooth { none, unique, frequency, cumulative, cnormal, kdensity, csplines, acsplines, bezier, sbezier, };
@@ -346,14 +346,7 @@ inline void GPMCanvas::SetGnuplotPath(const std::string& path)
 inline std::string GPMCanvas::GetGnuplotPath()
 {
 	if (!Paths<>::msGnuplotPath.empty()) return Paths<>::msGnuplotPath;
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4996)
-#endif 
-	if (const char* p = std::getenv("GNUPLOT_PATH")) return std::string(p);
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+	if (std::string p = GetEnv("GNUPLOT_PATH"); !p.empty()) return std::string(p);
 	return Paths<>::msDefaultGnuplotPath;
 }
 template <class T>
@@ -636,12 +629,12 @@ std::string VectorPlotCommand(const VectorParam& v)
 	c += " vector ";
 	if (v.mArrowHead != -1)
 	{
-		if ((v.mArrowHead & 0b11) == 0) c += " head";
-		else if ((v.mArrowHead & 0b11) == 1) c += " heads";
-		else if ((v.mArrowHead & 0b11) == 2) c += " noheads";
-		if ((v.mArrowHead & 0b1100) == 4) c += " filled";
-		else if ((v.mArrowHead & 0b1100) == 5) c += " empty";
-		else if ((v.mArrowHead & 0b1100) == 6) c += " nofilled";
+		if ((v.mArrowHead & 0b11) == (int)ArrowHead::head) c += " head";
+		else if ((v.mArrowHead & 0b11) == (int)ArrowHead::heads) c += " heads";
+		else if ((v.mArrowHead & 0b11) == (int)ArrowHead::noheads) c += " noheads";
+		if ((v.mArrowHead & 0b1100) == (int)ArrowHead::filled) c += " filled";
+		else if ((v.mArrowHead & 0b1100) == (int)ArrowHead::empty) c += " empty";
+		else if ((v.mArrowHead & 0b1100) == (int)ArrowHead::nofilled) c += " nofilled";
 	}
 	if (v.mLineType != -2) c += " linetype " + std::to_string(v.mLineType);
 	if (v.mLineWidth != -1) c += " linewidth " + std::to_string(v.mLineWidth);
@@ -1014,9 +1007,9 @@ class GPMCanvas2D : public GPM2DAxis<GPMCanvas>
 public:
 
 	using _Buffer = Buffer<GraphParam>;
-	using detail::GPM2DAxis<GPMCanvas>::GPM2DAxis;
+	using GPM2DAxis<GPMCanvas>::GPM2DAxis;
 
-	friend class GPMMultiPlotter;
+	friend class gpm2::GPMMultiPlot;
 
 	template <class Type1, class Type2, class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::PointOption)>
 	_Buffer PlotPoints(const std::vector<Type1>& x, const std::vector<Type2>& y, Options ...ops);
@@ -1849,7 +1842,7 @@ protected:
 
 
 template <class GraphParam, template <class> class Buffer>
-class GPMCanvasCM : public detail::GPM2DAxis<GPMCanvas>
+class GPMCanvasCM : public GPM2DAxis<GPMCanvas>
 {
 public:
 
@@ -1858,7 +1851,7 @@ public:
 	GPMCanvasCM(const std::string& output, double sizex = 0., double sizey = 0.);
 	GPMCanvasCM();
 
-	friend class GPMMultiPlotter;
+	friend class gpm2::GPMMultiPlot;
 
 	template <class ...Options, CUF_TAGGED_ARGS_ENABLER(Options, plot::Point3DOption)>
 	_Buffer PlotPoints(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z, Options ...ops);
