@@ -1,0 +1,35 @@
+name: Clang on Mac
+
+on: [ push, pull_request ]
+    
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: install gnuplot
+      run: |
+        brew install gnuplot
+    - name: run-cmake
+      uses: lukka/run-cmake@v2
+      with:
+        cmakeListsOrSettingsJson: CMakeSettingsJson
+        configurationRegexFilter: .*
+        buildDirectory: "${{ github.workspace }}/build"
+    - name: run debug build
+      run: ${{ github.workspace }}/build/x64-Debug/examples/examples
+    - name: copy result files of debug build
+      run: >-
+        mkdir -p clang_on_macos/debug &&
+        cp *.png *.txt ./clang_on_macos/debug
+    - name: run release build
+      run: ${{ github.workspace }}/build/x64-Release/examples/examples
+    - name: copy result files of release build
+      run: >-
+        mkdir -p clang_on_macos/release &&
+        cp *.png *.txt ./clang_on_macos/release
+    - name: upload result files
+      uses: actions/upload-artifact@v1
+      with:
+        name: clang_on_macos{{ github.sha }}
+        path: clang_on_macos
