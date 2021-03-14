@@ -40,22 +40,46 @@ int example_2d(const std::string output_filename = "example_2d.png", const bool 
 	pointsize      ... uniform point size.
 	variable_size  ... different sizes at each point.
 	smooth         ... interpolation and approximation by some routines.
-	xerrorbar      ... xerrorbar
-	yerrorbar      ... yerrorbar
-	*/
+	xerrorbar      ... xerrorbar. This is available only if you specify Style::lines, points or boxes option.
+	yerrorbar      ... yerrorbar. This is available only if you specify Style::lines, points or boxes option.
 
-	GPMCanvas2D g(output_filename);
-	g.ShowCommands(true);
-	g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
-	g.SetTitle("example\\_2d");
-	g.SetXRange(-4.0, 4.0);
-	g.SetXLabel("x");
-	g.SetYLabel("y");
-	g.PlotPoints(equation, plot::title = "mu = 0, sigma = 1",
-				 plot::style = Style::lines).
-		PlotPoints(x1, y1, plot::xerrorbar = 0.125, plot::yerrorbar = e1,
-				   plot::title = "data", plot::color = "black",
-				   plot::style = Style::points, plot::pointtype = 7, plot::pointsize = 0.5);
+	//The following options are available only with Style::boxes or Style::steps
+	fillpattern    ... fill with a colored pattern.
+	fillsolid      ... fill with a solid color specified by fillcolor with density [ 0.0, 1.0 ].
+	filltransparent... make the filled area transparent to the background color.
+	fillcolor      ... specify the color of filled area.
+	variable_fillcolor ...
+	bordercolor    ... specify the color of the border.
+	bordertype     ... specify the type of the border.
+	*/
+	{
+		GPMCanvas2D g(output_filename);
+		g.ShowCommands(true);
+		g.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
+		g.SetTitle("example\\_2d");
+		g.SetXRange(-4.0, 4.0);
+		g.SetXLabel("x");
+		g.SetYLabel("y");
+		g.PlotPoints(equation, plot::title = "mu = 0, sigma = 1",
+					 plot::style = Style::lines).
+			PlotPoints(x1, y1, plot::xerrorbar = 0.125, plot::yerrorbar = e1,
+					   plot::title = "data", plot::color = "black",
+					   plot::style = Style::points, plot::pointtype = 7, plot::pointsize = 0.5);
+	}
+	if (!enable_in_memory_data_transfer)
+	{
+		GPMCanvas2D g(output_filename + ".fileplot.png");
+		g.ShowCommands(true);
+		g.SetTitle("example\\_2d");
+		g.SetXRange(-4.0, 4.0);
+		g.SetXLabel("x");
+		g.SetYLabel("y");
+		g.PlotPoints(equation, plot::title = "mu = 0, sigma = 1",
+					 plot::style = Style::lines).
+			PlotPoints(output_filename + ".tmp1.txt", "1", "2", plot::xerrorbar = 0.125, plot::yerrorbar = "3",
+					   plot::title = "data", plot::color = "black",
+					   plot::style = Style::points, plot::pointtype = 7, plot::pointsize = 0.5);
+	}
 	return 0;
 }
 

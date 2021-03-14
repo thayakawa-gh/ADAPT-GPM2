@@ -12,7 +12,7 @@ namespace adapt
 inline namespace cuf
 {
 
-template <class Type, Type N>
+/*template <class Type, Type N>
 struct IntegralConstant
 {
 	static constexpr Type value = N;
@@ -22,12 +22,13 @@ struct IntegralConstant
 	constexpr IntegralConstant<Type, Type(N + M)> operator+(IntegralConstant<Type, M>) const { return IntegralConstant<Type, Type(N + M)>(); }
 };
 template <bool B>
-using BoolConstant = IntegralConstant<bool, B>;
+using BoolConstant = IntegralConstant<bool, B>;*/
 template <size_t N>
-using IndexConstant = IntegralConstant<size_t, N>;
+using IndexConstant = std::integral_constant<size_t, N>;
 
+/*
 using TrueType = BoolConstant<true>;
-using FalseType = BoolConstant<false>;
+using FalseType = BoolConstant<false>;*/
 
 //累乗計算クラス。ハッシュ化とか必要に応じて使おう。でもできればconstexpr欲しい。
 /*template <int base, int power>
@@ -67,8 +68,8 @@ class IsBasedOn_T
 {
 private:
 	template <class U>
-	static constexpr TrueType check(const Base<U>*);
-	static constexpr FalseType check(const void*);
+	static constexpr std::true_type check(const Base<U>*);
+	static constexpr std::false_type check(const void*);
 
 	static const Derived* d;
 public:
@@ -79,8 +80,8 @@ class IsBasedOn_XT
 {
 private:
 	template <class ...U>
-	static constexpr TrueType check(const Base<U...>*);
-	static constexpr FalseType check(const void*);
+	static constexpr std::true_type check(const Base<U...>*);
+	static constexpr std::false_type check(const void*);
 
 	static const Derived* d;
 public:
@@ -91,8 +92,8 @@ class IsBasedOn_N
 {
 private:
 	template <auto N>
-	static constexpr TrueType check(const Base<N>*);
-	static constexpr FalseType check(const void*);
+	static constexpr std::true_type check(const Base<N>*);
+	static constexpr std::false_type check(const void*);
 
 	static const Derived* d;
 public:
@@ -103,8 +104,8 @@ class IsBasedOn_NN
 {
 private:
 	template <auto N, auto M>
-	static constexpr TrueType check(const Base<N, M>*);
-	static constexpr FalseType check(const void*);
+	static constexpr std::true_type check(const Base<N, M>*);
+	static constexpr std::false_type check(const void*);
 
 	static const Derived* d;
 public:
@@ -154,7 +155,7 @@ template <std::size_t RoopNum, template <std::size_t CastN> class Functor, class
 inline void StaticRoop(Args&& ...args)
 {
 	StaticRoop_impl<RoopNum, 0, Functor>::apply(std::forward<Args>(args)...);
-}
+};
 
 //FlexibleSwitchは再帰処理で非効率なので、関数ポインタテーブル版を新たに作りたい。
 
@@ -259,34 +260,6 @@ public:
 	static constexpr bool value = Exist::value;
 };
 
-#if _MSC_VER <= 1900
-//msvc2015が糞すぎてテンプレート部分特殊化を解決してくれないので
-//こちらだけ書き換える。
-template <size_t Index, template <class...> class T>
-struct GetType_T_impl
-{};
-template <template <class...> class T>
-struct GetType_T_impl<0, T>
-{
-	template <class ...U>
-	using Type = T<U...>;
-	template <class U>
-	using Type1 = T<U>;
-	template <class U1, class U2>
-	using Type2 = T<U1, U2>;
-	template <class U1, class U2, class U3>
-	using Type3 = T<U1, U2, U3>;
-};
-template <size_t Index, template <class...> class THead, template <class...> class ...T>
-struct GetType_T : public GetType_T<Index - 1, T...>
-{};
-template <size_t Index, template <class...> class THead>
-struct GetType_T<Index, THead> : public GetType_T_impl<Index, THead>
-{};
-template <template <class...> class THead, template <class...> class ...T>
-struct GetType_T<0, THead, T...> : public GetType_T_impl<0, THead>
-{};
-#else
 template <size_t Index, template <class...> class ...T>
 struct GetType_T;
 template <size_t Index, template <class...> class THead, template <class...> class ...T>
@@ -307,7 +280,6 @@ struct GetType_T<0, THead, T...>
 	template <class U1, class U2, class U3>
 	using Type3 = THead<U1, U2, U3>;
 };
-#endif
 
 namespace detail
 {
@@ -332,7 +304,6 @@ struct FindType_T_impl<N, T>
 template <template <class...> class T, template <class...> class ...Args>
 struct FindType_T : public detail::FindType_T_impl<0, T, Args...>
 {};
-//#endif
 
 
 //int型テンプレート引数を一つだけ持つようなクラスを可変長引数テンプレートに与えたいときに、
@@ -490,6 +461,12 @@ namespace detail
 
 template <class ...Ts>
 struct CommonType_impl;
+template <class CommonT>
+struct CommonType_impl<CommonT>
+{
+	using Type = CommonT;
+	static constexpr bool value = true;
+};
 template <class CommonT>
 struct CommonType_impl<CommonT, CommonT>
 {

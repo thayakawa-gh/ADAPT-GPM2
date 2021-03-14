@@ -3,6 +3,7 @@
 #include "example_filledcurve.h"
 #include "example_string.h"
 #include "example_for_loop.h"
+#include "example_datetime.h"
 
 int main()
 {
@@ -20,6 +21,8 @@ int main()
 	example_string();
 
 	example_for_loop();
+
+	example_datetime();
 
 	//The following are tests for in-memory data transfer (datablock feature).
 	//Non-alphanumeric characters are intentionally used to test SanitizeForDataBlock().

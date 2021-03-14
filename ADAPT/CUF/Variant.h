@@ -158,7 +158,7 @@ private:
 		}
 		//コピー不可であるときは例外を投げる。
 		template <class T = Type, EnableIfT<!std::is_copy_constructible<T>::value> = nullptr>
-		static void apply(Variant<Types...>& self, const Variant<Types...>& other)
+		static void apply(Variant<Types...>&, const Variant<Types...>&)
 		{
 			throw InvalidType("This type is not copy constructible");
 		}
@@ -177,7 +177,7 @@ private:
 		}
 		//ムーブ不可であるときは例外を投げる。
 		template <class T = Type, EnableIfT<!std::is_move_constructible<T>::value> = nullptr>
-		static void apply(Variant<Types...>& self, Variant<Types...>&& other)
+		static void apply(Variant<Types...>&, Variant<Types...>&&)
 		{
 			throw InvalidType("This type is not move constructible");
 		}

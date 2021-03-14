@@ -53,7 +53,12 @@ public:
 	using Exception::Exception;
 	virtual std::string GetErrorMessage() const noexcept { return std::string("NOT INITIALIZED : ") + what(); }
 };
-
+class NotDefined : public Exception
+{
+public:
+	using Exception::Exception;
+	virtual std::string GetErrorMessage() const noexcept { return std::string("NOT DEFINED : ") + what(); }
+};
 class InvalidArg : public Exception
 {
 public:

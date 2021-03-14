@@ -303,7 +303,7 @@ void WriteAnyFloat(std::ostream& str, Value v)
 	WriteAnyFloat_impl<Value>::f(str, v);
 }
 
-inline void WriteAnyString(std::ostream& str, const std::string& v)
+inline void WriteAnyString(std::ostream& str, std::string_view v)
 {
 	str << v;
 }
@@ -597,7 +597,7 @@ struct GetOptions_impl<TypeList<>>
 {
 	static constexpr auto apply()
 	{
-		return std::make_tuple(print::Delimiter<' '>(), print::End<'\n'>(), FalseType(), IndexConstant<0>());
+		return std::make_tuple(print::Delimiter<' '>(), print::End<'\n'>(), std::false_type(), IndexConstant<0>());
 	}
 };
 template <class Head, class ...Args>
@@ -606,7 +606,7 @@ struct GetOptions_impl<TypeList<Head, Args...>>
 	static constexpr auto apply()
 	{
 		constexpr auto t = GetOptions_impl<TypeList<Args...>>::apply();
-		return std::make_tuple(std::get<0>(t), std::get<1>(t), std::get<2>(t), std::get<3>(t) + IndexConstant<1>());
+		return std::make_tuple(std::get<0>(t), std::get<1>(t), std::get<2>(t), IndexConstant<std::get<3>(t) + 1>());
 	}
 };
 template <int ...Int, class ...Args>
@@ -633,7 +633,7 @@ struct GetOptions_impl<TypeList<print::Flush<B>, Args...>>
 	static constexpr auto apply()
 	{
 		constexpr auto t = GetOptions_impl<TypeList<Args...>>::apply();
-		return std::make_tuple(std::get<0>(t), std::get<1>(t), BoolConstant<B>(), std::get<3>(t));
+		return std::make_tuple(std::get<0>(t), std::get<1>(t), std::bool_constant<B>(), std::get<3>(t));
 	}
 };
 template <class ...Args>
@@ -645,11 +645,11 @@ constexpr auto GetOptions()
 template <class F>
 inline void Flush(FILE* fp) { fflush(fp); }
 template <>
-inline void Flush<FalseType>(FILE*) {}
+inline void Flush<std::false_type>(FILE*) {}
 template <class F>
 inline void Flush(std::ostream& ost) { ost << std::flush; }
 template <>
-inline void Flush<FalseType>(std::ostream&) {}
+inline void Flush<std::false_type>(std::ostream&) {}
 
 template <class Del, class End>
 constexpr auto MakeFormatStr_rec()
@@ -717,6 +717,17 @@ void Print(FILE* fp, Args&& ...args)
 	constexpr auto fmt = detail::MakeFormatStr<decltype(d), decltype(e), GetFrontTypesT<n, std::decay_t<Args>...>>::apply();
 	Apply(&fprintf, std::tuple_cat(std::make_tuple(fp), std::make_tuple(fmt.data()), GetFrontArgs<n>(detail::ConvStringToCharPtr(std::forward<Args>(args))...)));
 	detail::Flush<decltype(f)>(fp);
+}
+template <class ...Args>
+void Print(char* str, Args&& ...args)
+{
+	constexpr auto t = detail::GetOptions<std::decay_t<Args>...>();
+	constexpr auto d = std::get<0>(t);
+	constexpr auto e = std::get<1>(t);
+	constexpr auto f = std::get<2>(t);
+	constexpr size_t n = std::get<3>(t).value;
+	constexpr auto fmt = detail::MakeFormatStr<decltype(d), decltype(e), GetFrontTypesT<n, std::decay_t<Args>...>>::apply();
+	Apply(&sprintf, std::tuple_cat(std::make_tuple(str), std::make_tuple(fmt.data()), GetFrontArgs<n>(detail::ConvStringToCharPtr(std::forward<Args>(args))...)));
 }
 template <class ...Args>
 void Print(std::ostream& ost, Args&& ...args)

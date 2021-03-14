@@ -32,7 +32,7 @@ double fieldy(double x, double y)
 	double f2 = 3 * y / std::pow(r(x + 3, y), 3);
 	return f1 - f2;
 }
-int example_colormap(const std::string output_filename="example_colormap.png", const bool enable_in_memory_data_transfer=false)
+int example_colormap(const std::string output_filename = "example_colormap.png", const bool enable_in_memory_data_transfer = false)
 {
 	adapt::Matrix<double> m(100, 100);
 	std::pair<double, double> xrange = { -9.9, 9.9 };
@@ -86,41 +86,58 @@ int example_colormap(const std::string output_filename="example_colormap.png", c
 	cntrlinewidth
 	*/
 
+	{
+		GPMMultiPlot multi(output_filename, 1, 2, 1200, 600);
 
-	GPMMultiPlot multi(output_filename, 1, 2, 1200, 600);
+		GPMCanvasCM g1(output_filename + ".map_tmp");
+		g1.ShowCommands(true);
+		g1.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
+		g1.SetTitle("example\\_colormap");
+		g1.SetPaletteDefined({ {0, "yellow" }, { 4.5, "red" }, { 5., "black" }, { 5.5, "blue"}, { 10, "cyan" } });
+		g1.SetSizeRatio(-1);
+		g1.SetXLabel("x");
+		g1.SetYLabel("y");
+		g1.SetXRange(-10, 10);
+		g1.SetYRange(-10, 10);
+		g1.SetCBRange(-5, 5);
+		g1.PlotColormap(m, xrange, yrange, plot::title = "notitle").
+			PlotVectors(xfrom, yfrom, xlen, ylen, plot::title = "notitle", plot::color = "white");
 
-	GPMCanvasCM g1("example_colormap_tmpfile");
-	g1.ShowCommands(true);
-	g1.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
-	g1.SetTitle("example\\_colormap");
-	g1.SetPaletteDefined({ {0, "yellow" }, { 4.5, "red" }, { 5., "black" }, { 5.5, "blue"}, { 10, "cyan" } });
-	g1.SetSizeRatio(-1);
-	g1.SetXLabel("x");
-	g1.SetYLabel("y");
-	g1.SetXRange(-10, 10);
-	g1.SetYRange(-10, 10);
-	g1.SetCBRange(-5, 5);
-	g1.PlotColormap(m, xrange, yrange, plot::title = "notitle").
-		PlotVectors(xfrom, yfrom, xlen, ylen, plot::title = "notitle", plot::color = "white");
+		//sleep for a short time to avoid the output image broken by multiplot.
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
-	//sleep for a short time to avoid the output image broken by multiplot.
-	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+		GPMCanvasCM g2(output_filename + ".cntr_tmp");
+		g2.ShowCommands(true);
+		g2.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
+		g2.SetTitle("example\\_contour");
+		g2.SetPaletteDefined({ {0, "yellow" }, { 4.5, "red" }, { 5., "black" }, { 5.5, "blue"}, { 10, "cyan" } });
+		g2.SetSizeRatio(-1);
+		g2.SetXLabel("x");
+		g2.SetYLabel("y");
+		g2.SetXRange(-10, 10);
+		g2.SetYRange(-10, 10);
+		g2.SetCBRange(-5, 5);
+		g2.PlotColormap(m, xrange, yrange, plot::title = "notitle",
+						plot::with_contour, plot::without_surface, plot::variable_cntrcolor,
+						plot::cntrlevels_incremental = { -20., 0.2, 20. }).
+			PlotVectors(xfrom, yfrom, xlen, ylen, plot::title = "notitle", plot::variable_color = arrowcolor);
+	}
 
-	GPMCanvasCM g2("example_colormap_tmpfile");
-	g2.ShowCommands(true);
-	g2.EnableInMemoryDataTransfer(enable_in_memory_data_transfer); // Enable or disable datablock feature of gnuplot
-	g2.SetTitle("example\\_contour");
-	g2.SetPaletteDefined({ {0, "yellow" }, { 4.5, "red" }, { 5., "black" }, { 5.5, "blue"}, { 10, "cyan" } });
-	g2.SetSizeRatio(-1);
-	g2.SetXLabel("x");
-	g2.SetYLabel("y");
-	g2.SetXRange(-10, 10);
-	g2.SetYRange(-10, 10);
-	g2.SetCBRange(-5, 5);
-	g2.PlotColormap(m, xrange, yrange, plot::title = "notitle",
-					plot::with_contour, plot::without_surface, plot::variable_cntrcolor,
-					plot::cntrlevels_incremental = { -20., 0.2, 20. }).
-		PlotVectors(xfrom, yfrom, xlen, ylen, plot::title = "notitle", plot::variable_color = arrowcolor);
+	if (!enable_in_memory_data_transfer)
+	{
+		GPMCanvasCM g1(output_filename + ".fileplot.png");
+		g1.ShowCommands(true);
+		g1.SetTitle("example\\_colormap");
+		g1.SetPaletteDefined({ {0, "yellow" }, { 4.5, "red" }, { 5., "black" }, { 5.5, "blue"}, { 10, "cyan" } });
+		g1.SetSizeRatio(-1);
+		g1.SetXLabel("x");
+		g1.SetYLabel("y");
+		g1.SetXRange(-10, 10);
+		g1.SetYRange(-10, 10);
+		g1.SetCBRange(-5, 5);
+		g1.PlotColormap(output_filename + ".map_tmp.tmp0.txt", "1", "2", "5", plot::title = "notitle").
+			PlotVectors(output_filename + ".map_tmp.tmp1.txt", "1", "2", "3", "4", plot::title = "notitle", plot::color = "white");
+	}
 	return 0;
 }
 

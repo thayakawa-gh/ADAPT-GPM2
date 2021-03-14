@@ -3,6 +3,7 @@
 
 out/
 build/
+CMakeSettings.json
 cmake-build-debug/
 cmake-build-release/
 
