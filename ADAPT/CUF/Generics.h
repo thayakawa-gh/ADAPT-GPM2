@@ -39,7 +39,7 @@ class Generics_impl<std::tuple<Refs...>, std::tuple<Visitors...>>
 				return std::any_cast<Type&>(std::forward<Any>(any));
 		}
 		else
-			return std::forward<Any>(any).template Get<Type>();
+			return std::forward<Any>(any).template Get_unsafe<Type>();
 	}
 
 	//再帰継承にするよりもstd::tuple<VisitBase<Visitors>...>のようにtupleに押し込んだほうがいい、という考え方もできるが、
@@ -74,6 +74,7 @@ class Generics_impl<std::tuple<Refs...>, std::tuple<Visitors...>>
 	public:
 		using VisitBase_impl<TypeList<Visitors...>, 0>::Visit;
 		virtual void CopyTo(void*) const = 0;
+		virtual void MoveTo(void*) = 0;
 	};
 
 	template <class Types, class TIndices, class Visitors_, size_t VIndex>
@@ -119,9 +120,13 @@ class Generics_impl<std::tuple<Refs...>, std::tuple<Visitors...>>
 		: public VisitDerivative_impl<TypeList<Types...>, std::make_index_sequence<sizeof...(Types)>, TypeList<Visitors...>, 0>
 	{
 	public:
-		virtual void CopyTo(void* base) const
+		virtual void CopyTo(void* base) const override
 		{
 			new (base) VisitDerivative(*this);
+		}
+		virtual void MoveTo(void* base) override
+		{
+			new (base) VisitDerivative(std::move(*this));
 		}
 	};
 
@@ -189,11 +194,11 @@ public:
 	}
 	//mRefsというメンバ名ではあるが、実はAnyやShareableAnyも対応しているので、
 	//ムーブコンストラクタが意味を持つこともある。
-	Generics_impl(Generics_impl&& g)
+	Generics_impl(Generics_impl&& g) noexcept
 		: mRefs(std::move(g.mRefs))
 	{
-		const VisitBase* vis = reinterpret_cast<const VisitBase*>(&g.mVisitors);
-		vis->CopyTo(&mVisitors);
+		VisitBase* vis = reinterpret_cast<VisitBase*>(&g.mVisitors);
+		vis->MoveTo(&mVisitors);
 	}
 	Generics_impl& operator=(const Generics_impl& g)
 	{
@@ -202,11 +207,11 @@ public:
 		vis->CopyTo(&mVisitors);
 		return *this;
 	}
-	Generics_impl& operator=(Generics_impl&& g)
+	Generics_impl& operator=(Generics_impl&& g) noexcept
 	{
 		mRefs = std::move(g.mRefs);
-		const VisitBase* vis = reinterpret_cast<const VisitBase*>(&g.mVisitors);
-		vis->CopyTo(&mVisitors);
+		VisitBase* vis = reinterpret_cast<VisitBase*>(&g.mVisitors);
+		vis->MoveTo(&mVisitors);
 		return *this;
 	}
 

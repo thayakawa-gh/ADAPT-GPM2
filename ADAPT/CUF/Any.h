@@ -12,129 +12,299 @@ namespace adapt
 inline namespace cuf
 {
 
-class Any
+namespace detail
 {
-	class PlaceHolder
-	{
-	public:
-		virtual ~PlaceHolder() {}
-		virtual PlaceHolder* Clone() const = 0;
-	};
 
-	template <class Type>
-	class Holder : public PlaceHolder
+//AllowBigObjがfalseの場合、StrgSizeより大きなオブジェクトは格納できなくなる。
+template <size_t StrgSize, bool AllowBigObj>
+class Any_impl
+{
+	template <class T>
+	static constexpr bool IsAny()
 	{
-	public:
-		template <class ...Args>
-		Holder(Args&& ...args)
-			: mValue(std::forward<Args>(args)...)
-		{}
-	private:
-		template <class Dummy = void, bool B = std::is_copy_constructible<Type>::value>
-		struct Clone_impl;
-		template <class Dummy, bool B>
-		struct Clone_impl
+		return std::is_same_v<std::decay_t<T>, Any_impl>;
+	}
+
+	template <class T>
+	static constexpr bool IsSmall()
+	{
+		return
+			sizeof(T) <= StrgSize &&
+			std::is_nothrow_move_constructible_v<T>;
+	}
+
+	struct RTFuncs
+	{
+		template <class T, bool Small>
+		static void Copy(Any_impl& to, const Any_impl& from)
 		{
-			static PlaceHolder* f(const Holder<Type>& h) { return new Holder<Type>(h.mValue); }
-		};
-		template <class Dummy>
-		struct Clone_impl<Dummy, false>
-		{
-			static PlaceHolder* f(const Holder<Type>&) { throw InvalidType("Assigned class is not copyable."); }
-		};
-	public:
-		virtual PlaceHolder* Clone() const override
-		{
-			return Clone_impl<>::f(*this);
+			if constexpr (Small)
+			{
+				auto& t = reinterpret_cast<T&>(to.mStorage.mSmall.mData);
+				new (&t) T(from.Get_unsafe<T>());
+			}
+			else if constexpr (AllowBigObj)
+			{
+				to.mStorage.mBig.mPtr = new T(from.Get_unsafe<T>());
+			}
+			else
+				static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
 		}
+		template <class T, bool Small>
+		static void Move(Any_impl& to, Any_impl&& from) noexcept
+		{
+			if constexpr (Small)
+			{
+				auto& t = reinterpret_cast<T&>(to.mStorage.mSmall.mData);
+				auto& f = reinterpret_cast<T&>(from.mStorage.mSmall.mData);
+				new (&t) T(std::move(f));
+				f.~T();
+			}
+			else if constexpr (AllowBigObj)
+			{
+				to.mStorage.mBig.mPtr = from.mStorage.mBig.mPtr;
+				from.mStorage.mBig.mPtr = nullptr;
+			}
+			else
+				static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
+		}
+		template <class T, bool Small>
+		static void Destroy(Any_impl& to) noexcept
+		{
+			if constexpr (Small)
+			{
+				auto& t = reinterpret_cast<T&>(to.mStorage.mSmall.mData);
+				t.~T();
+				to.mStorage.mSmall = SmallStorage{};
+			}
+			else if constexpr (AllowBigObj)
+			{
+				auto* t = reinterpret_cast<T*>(to.mStorage.mBig.mPtr);
+				delete t;
+				to.mStorage.mBig = BigStorage{};
+			}
+			else
+				static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
+		}
+		template <class T>
+		static const std::type_info& TypeInfo()
+		{
+			return typeid(T);
+		}
+		using CopyF = void(Any_impl&, const Any_impl&);
+		using MoveF = void(Any_impl&, Any_impl&&);
+		using DestroyF = void(Any_impl&);
+		using TypeInfoF = const std::type_info& (void);
 
-		Type mValue;
+		CopyF* mCopy = nullptr;
+		MoveF* mMove = nullptr;
+		DestroyF* mDestroy = nullptr;
+		TypeInfoF* mTypeInfo = nullptr;
 	};
+	template <class T, bool Small = IsSmall<T>()>
+	inline static constexpr RTFuncs RTFuncs_value =
+	{ &RTFuncs::template Copy<T, Small>, &RTFuncs::template Move<T, Small>,
+	  &RTFuncs::template Destroy<T, Small>, &RTFuncs::template TypeInfo<T> };
 
 public:
 
 	struct NullType {};
 
-	Any(NullType = NullType()) : mContent(nullptr) {}
-
-	//値を直接Holderに代入する。
-	//Anyのコピー、ムーブコンストラクタが正しく機能するよう、TypeがAnyであるときだけはこの関数を呼ぶことを禁じる。
-	//この仕様上、AnyにAnyを格納することは推奨しない。そんなことをする必要はどこにも感じられないが。
-	//つーかこんな呼び分けしなくたってコンパイラが判断してくれるんじゃね？
-	/*template <class Type,
-		bool B = std::is_same<std::remove_reference_t<std::remove_const_t<Type>>, Any>::value,
-		std::enable_if_t<!B, std::nullptr_t> = nullptr>
-	Any(Type&& type)
-		: mContent(new Holder<Type>(std::forward<Type>(type)))
-	{}*/
-	/*template <class Type, class ...Args>
-	Any(Args&& ...args)
-		: mContent(new Holder<Type>(std::forward<Args>(args)...))
-	{}*/
-
-	template <class Type, std::enable_if_t<!std::is_same<RemoveCVRefT<Type>, Any>::value, std::nullptr_t> = nullptr>
-	Any(Type&& t)
-		: mContent(new Holder<RemoveCVRefT<Type>>(std::forward<Type>(t)))
-	{}
-
-	Any(const Any& any)
-		: mContent(any.mContent->Clone())
-	{}
-	Any(Any&& any) noexcept
-		: mContent(std::move(any.mContent))
-	{}
-
-	Any& operator=(const Any& any)
+	Any_impl() : mRTFuncs(nullptr) {}
+	template <class T, std::enable_if_t<!IsAny<T>(), std::nullptr_t> = nullptr>
+	Any_impl(T&& v)
+		: mRTFuncs(nullptr)
 	{
-		mContent.reset(any.mContent->Clone());
-		return *this;
+		Emplace_impl<std::decay_t<T>>(std::forward<T>(v));
 	}
-	Any& operator=(Any&& any) noexcept
+	Any_impl(const Any_impl& a)
+		: mRTFuncs(nullptr)
 	{
-		mContent = std::move(any.mContent);
+		if (!a.IsEmpty()) Copy(a);
+	}
+	Any_impl(Any_impl&& a) noexcept
+		: mRTFuncs(nullptr)
+	{
+		if (!a.IsEmpty()) Move(std::move(a));
+	}
+
+	template <class T, std::enable_if_t<!IsAny<T>(), std::nullptr_t> = nullptr>
+	Any_impl& operator=(T&& v)
+	{
+		Emplace<std::decay_t<T>>(std::forward<T>(v));
 		return *this;
 	}
 
-	template <class Type>
-	Any& operator=(Type&& v)
+	Any_impl& operator=(const Any_impl& a)
 	{
-		mContent = std::make_unique<Holder<RemoveCVRefT<Type>>>(std::forward<Type>(v));
+		if (!IsEmpty()) Destroy();
+		if (!a.IsEmpty()) Copy(a);
 		return *this;
 	}
+	Any_impl& operator=(Any_impl&& a) noexcept
+	{
+		if (!IsEmpty()) Destroy();
+		if (!a.IsEmpty()) Move(std::move(a));
+		return *this;
+	}
+	~Any_impl()
+	{
+		if (!IsEmpty()) Destroy();
+	}
 
-	template <class Type, class ...Args>
+	template <class T, class ...Args>
 	void Emplace(Args&& ...args)
 	{
-		mContent = std::make_unique<Holder<Type>>(std::forward<Args>(args)...);
+		if (!IsEmpty()) Destroy();
+		Emplace_impl<T>(std::forward<Args>(args)...);
 	}
 
-	template <class Type>
-	Type& Get() &
-	{
-		return static_cast<Holder<Type>&>(*mContent).mValue;
-	}
-	template <class Type>
-	const Type& Get() const &
-	{
-		return static_cast<const Holder<Type>&>(*mContent).mValue;
-	}
-	template <class Type>
-	Type&& Get() &&
-	{
-		return static_cast<Holder<Type>&&>(*mContent).Value;
-	}
-
-	bool IsEmpty() const { return !mContent; }
-
-	template <class Type>
+	bool IsEmpty() const { return mRTFuncs == nullptr; }
+	operator bool() const { return !IsEmpty(); }
+	template <class T>
 	bool Is() const
 	{
-		return dynamic_cast<const Holder<Type>*>(mContent.get()) != nullptr;
+		return !IsEmpty() && typeid(T) == TypeInfo();
+	}
+	const std::type_info& GetType() const
+	{
+		if (IsEmpty()) return typeid(NullType);
+		return TypeInfo();
+	}
+
+	template <class T>
+	const T& Get() const&
+	{
+		if (!Is<T>()) throw InvalidType("bad cast of Any");
+		return Get_unsafe<T>();
+	}
+	template <class T>
+	T& Get()&
+	{
+		if (!Is<T>()) throw InvalidType("bad cast of Any");
+		return Get_unsafe<T>();
+	}
+	template <class T>
+	T&& Get()&&
+	{
+		if (!Is<T>()) throw InvalidType("bad cast of Any");
+		return Get_unsafe<T>();
+	}
+
+	template <class T>
+	const T& Get_unsafe() const&
+	{
+		assert(!IsEmpty());
+		if constexpr (IsSmall<T>())
+			return reinterpret_cast<const T&>(mStorage.mSmall.mData);
+		else if constexpr (AllowBigObj)
+			return *reinterpret_cast<const T*>(mStorage.mBig.mPtr);
+		else
+			static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
+	}
+	template <class T>
+	T& Get_unsafe()&
+	{
+		assert(!IsEmpty());
+		if constexpr (IsSmall<T>())
+			return reinterpret_cast<T&>(mStorage.mSmall.mData);
+		else if constexpr (AllowBigObj)
+			return *reinterpret_cast<T*>(mStorage.mBig.mPtr);
+		else
+			static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
+	}
+	template <class T>
+	T&& Get_unsafe()&&
+	{
+		assert(!IsEmpty());
+		if constexpr (IsSmall<T>())
+			return std::move(reinterpret_cast<T&>(mStorage.mStorage.mSmall.mData));
+		else if constexpr (AllowBigObj)
+			return std::move(*reinterpret_cast<T*>(mStorage.mBig.mPtr));
+		else
+			static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
 	}
 
 private:
-	std::unique_ptr<PlaceHolder> mContent;
+
+	void Copy(const Any_impl& from)
+	{
+		assert(IsEmpty());
+		mRTFuncs = from.mRTFuncs;
+		mRTFuncs->mCopy(*this, from);
+	}
+	void Move(Any_impl&& from) noexcept
+	{
+		assert(IsEmpty());
+		mRTFuncs = from.mRTFuncs;
+		mRTFuncs->mMove(*this, std::move(from));
+		from.mRTFuncs = nullptr;
+	}
+	void Destroy() noexcept
+	{
+		assert(!IsEmpty());
+		auto* d = mRTFuncs->mDestroy;
+		mRTFuncs = nullptr;
+		d(*this);
+	}
+	const std::type_info& TypeInfo() const
+	{
+		assert(!IsEmpty());
+		return mRTFuncs->mTypeInfo();
+	}
+
+	//Tはdecayされているものとする。
+	template <class T, class ...Args>
+	void Emplace_impl(Args&& ...args)
+	{
+		assert(IsEmpty());
+		if constexpr (IsSmall<T>())
+		{
+			//small
+			auto* s = reinterpret_cast<T*>(&mStorage.mSmall.mData);
+			new (s) T(std::forward<Args>(args)...);
+			mRTFuncs = &RTFuncs_value<T>;
+		}
+		else if constexpr (AllowBigObj)
+		{
+			//big
+			mStorage.mBig.mPtr = new T(std::forward<Args>(args)...);
+			mRTFuncs = &RTFuncs_value<T>;
+		}
+		else
+			static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
+	}
+
+	struct BigStorage
+	{
+		char Padding[StrgSize - sizeof(void*)];
+		void* mPtr;
+	};
+	struct SmallStorage
+	{
+		std::aligned_storage_t<StrgSize, alignof(std::max_align_t)> mData;
+	};
+	template <bool, class = void>
+	union Storage
+	{
+		BigStorage mBig;
+		SmallStorage mSmall;
+	};
+	template <class Dummy>
+	union Storage<false, Dummy>
+	{
+		SmallStorage mSmall;
+	};
+
+	Storage<AllowBigObj> mStorage;
+	const RTFuncs* mRTFuncs;
 };
+
+}
+
+using Any = detail::Any_impl<24, true>;
+template <size_t Size>
+using StaticAny = detail::Any_impl<Size, false>;
 
 //shared_ptr+anyみたいなもの。機能的にはshared_ptr<void>と大差ない気がする。
 //任意の型の値を格納することができ、なおかつreference countを持ち共有することができる。
@@ -242,18 +412,43 @@ public:
 		mContent = new Holder<Type>(std::forward<Args>(args)...);
 	}
 
+	bool IsEmpty() const { return !mContent; }
+	template <class T>
+	bool Is() const
+	{
+		return dynamic_cast<const Holder<T>&>(*mContent) != nullptr;
+	}
+
+	template <class Type>
+	const Type& Get() const&
+	{
+		if (!Is<Type>()) throw InvalidType("bad ShareableAny cast");
+		return Get_unsafe<Type>();
+	}
 	template <class Type>
 	Type& Get() &
+	{
+		if (!Is<Type>()) throw InvalidType("bad ShareableAny cast");
+		return Get_unsafe<Type>();
+	}
+	template <class Type>
+	Type&& Get() &&
+	{
+		if (!Is<Type>()) throw InvalidType("bad ShareableAny cast");
+		return Get_unsafe<Type>();
+	}
+	template <class Type>
+	Type& Get_unsafe() &
 	{
 		return static_cast<Holder<Type>&>(*mContent).mValue;
 	}
 	template <class Type>
-	const Type& Get() const &
+	const Type& Get_unsafe() const &
 	{
 		return static_cast<const Holder<Type>&>(*mContent).mValue;
 	}
 	template <class Type>
-	Type&& Get()&&
+	Type&& Get_unsafe()&&
 	{
 		return static_cast<const Holder<Type>&>(*mContent).mValue;
 	}
@@ -270,8 +465,6 @@ public:
 		}
 	}
 	int GetCount() const { return mContent->GetCount(); }
-
-	bool IsEmpty() const { return !mContent; }
 
 private:
 	PlaceHolder* mContent;
@@ -351,6 +544,12 @@ public:
 	template <class Type>
 	Type Get() const
 	{
+		if (!Is<Type>()) throw InvalidType("bad AnyRef cast");
+		return Get_unsafe<Type>();
+	}
+	template <class Type>
+	Type Get_unsafe() const
+	{
 		const Holder<Type>* p = GetHolder_unsafe<Type>();
 		return static_cast<Type>(p->mValue);
 	}
@@ -427,6 +626,8 @@ public:
 	template <class Type>
 	Type& Get() const { return Base::Get<Type&>(); }
 	template <class Type>
+	Type& Get_unsafe() const { return Base::Get_unsafe<Type&>(); }
+	template <class Type>
 	bool Is() const { return Base::Is<Type&>(); }
 };
 class AnyCRef : public AnyURef
@@ -462,6 +663,8 @@ public:
 	template <class Type>
 	const Type& Get() const { return Base::Get<const Type&>(); }
 	template <class Type>
+	const Type& Get_unsafe() const { return Base::Get_unsafe<const Type&>(); }
+	template <class Type>
 	bool Is() const { return Base::Is<const Type&>(); }
 };
 class AnyRRef : public AnyURef
@@ -496,6 +699,8 @@ public:
 
 	template <class Type>
 	Type&& Get() const { return Base::Get<Type&&>(); }
+	template <class Type>
+	Type&& Get_unsafe() const { return Base::Get_unsafe<Type&&>(); }
 	template <class Type>
 	bool Is() const { return Base::Is<Type&&>(); }
 };

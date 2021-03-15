@@ -70,7 +70,7 @@ int example_datetime(const std::string output_filename = "example_datetime.png",
 			PlotLines(x, y4, plot::title = "positive\\_total", plot::axis = "x1y2", plot::linewidth = 3);
 	}
 #else
-	if (false) {
+	{
 		std::vector<std::string> x;
 		std::vector<int> y, y2, y3, y4;
 		int tsum = 0, psum = 0;

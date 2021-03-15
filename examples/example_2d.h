@@ -13,9 +13,9 @@ int example_2d(const std::string output_filename = "example_2d.png", const bool 
 
 	std::mt19937_64 mt(0);
 	std::normal_distribution<> nd(0., 1.);
+	std::vector<double> e1(32);
 	std::vector<double> x1(32, 0);
 	std::vector<double> y1(32, 0);
-	std::vector<double> e1(32);
 	for (int i = 0; i < 1000; ++i)
 	{
 		double x = nd(mt);
@@ -66,7 +66,8 @@ int example_2d(const std::string output_filename = "example_2d.png", const bool 
 					   plot::title = "data", plot::color = "black",
 					   plot::style = Style::points, plot::pointtype = 7, plot::pointsize = 0.5);
 	}
-	if (!enable_in_memory_data_transfer)
+	//if (!enable_in_memory_data_transfer)
+	if (false)
 	{
 		GPMCanvas2D g(output_filename + ".fileplot.png");
 		g.ShowCommands(true);
