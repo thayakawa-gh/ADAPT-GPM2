@@ -274,9 +274,9 @@ std::string VectorPlotCommand(const VectorParam& v)
 		if ((v.mArrowHead & 0b11) == 0) c += " head";
 		else if ((v.mArrowHead & 0b11) == 1) c += " heads";
 		else if ((v.mArrowHead & 0b11) == 2) c += " noheads";
-		if ((v.mArrowHead & 0b1100) == 4) c += " filled";
-		else if ((v.mArrowHead & 0b1100) == 5) c += " empty";
-		else if ((v.mArrowHead & 0b1100) == 6) c += " nofilled";
+		if ((v.mArrowHead & 0b1100) == 0) c += " filled";
+		else if ((v.mArrowHead & 0b1100) == 4) c += " empty";
+		else if ((v.mArrowHead & 0b1100) == 8) c += " nofilled";
 	}
 	if (v.mLineType != -2) c += " linetype " + std::to_string(v.mLineType);
 	if (v.mLineWidth != -1) c += " linewidth " + std::to_string(v.mLineWidth);
@@ -321,7 +321,7 @@ std::string FilledCurveplotCommand(const FilledCurveParam& f)
 	return c;
 }
 template <class GraphParam>
-std::string ColormapPlotCommand(const GraphParam& p)
+std::string ColormapPlotCommand(const GraphParam&)
 {
 	return std::string();
 }
@@ -1999,6 +1999,9 @@ PlotPoints(std::string_view filename,
 	i.SetBaseOptions(ops...);
 
 	auto& p = i.GetPointParam();
+	p.mX = x;
+	p.mY = y;
+	p.mZ = z;
 	p.SetOptions(ops...);
 	return Plot(i);
 }
@@ -2034,6 +2037,9 @@ PlotPoints(std::string_view filename,
 	i.SetBaseOptions(ops...);
 
 	auto& p = i.GetPointParam();
+	p.mX = x;
+	p.mY = y;
+	p.mZ = 0.;
 	p.SetOptions(ops...);
 	return Plot(i);
 }
@@ -2505,7 +2511,7 @@ PlotVectors(std::string_view filename,
 			Options ...ops)
 {
 	_Buffer p(this);
-	return p.PlotVectors(xfrom, yfrom, zfrom, xlen, ylen, zlen, ops...);
+	return p.PlotVectors(filename, xfrom, yfrom, zfrom, xlen, ylen, zlen, ops...);
 }
 template <class GraphParam, template <class> class Buffer>
 template <class ...Options, bool B, std::enable_if_t<B, std::nullptr_t>>
@@ -2526,7 +2532,7 @@ PlotVectors(std::string_view filename,
 			Options ...ops)
 {
 	_Buffer p(this);
-	return p.PlotVectors(xfrom, yfrom, xlen, ylen, ops...);
+	return p.PlotVectors(filename, xfrom, yfrom, xlen, ylen, ops...);
 }
 
 template <class GraphParam, template <class> class Buffer>

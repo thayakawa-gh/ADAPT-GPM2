@@ -48,7 +48,7 @@ class Any_impl
 				to.mStorage.mBig.mPtr = new T(from.Get_unsafe<T>());
 			}
 			else
-				static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
+				static_assert([]() { return false; }, "size of the template argument is greater than Any's storage.");
 		}
 		template <class T, bool Small>
 		static void Move(Any_impl& to, Any_impl&& from) noexcept
@@ -66,7 +66,7 @@ class Any_impl
 				from.mStorage.mBig.mPtr = nullptr;
 			}
 			else
-				static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
+				static_assert([]() { return false; }, "size of the template argument is greater than Any's storage.");
 		}
 		template <class T, bool Small>
 		static void Destroy(Any_impl& to) noexcept
@@ -84,7 +84,7 @@ class Any_impl
 				to.mStorage.mBig = BigStorage{};
 			}
 			else
-				static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
+				static_assert([]() { return false; }, "size of the template argument is greater than Any's storage.");
 		}
 		template <class T>
 		static const std::type_info& TypeInfo()
@@ -200,7 +200,7 @@ public:
 		else if constexpr (AllowBigObj)
 			return *reinterpret_cast<const T*>(mStorage.mBig.mPtr);
 		else
-			static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
+			static_assert([]() { return false; }, "size of the template argument is greater than Any's storage.");
 	}
 	template <class T>
 	T& Get_unsafe()&
@@ -211,7 +211,7 @@ public:
 		else if constexpr (AllowBigObj)
 			return *reinterpret_cast<T*>(mStorage.mBig.mPtr);
 		else
-			static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
+			static_assert([]() { return false; }, "size of the template argument is greater than Any's storage.");
 	}
 	template <class T>
 	T&& Get_unsafe()&&
@@ -222,7 +222,7 @@ public:
 		else if constexpr (AllowBigObj)
 			return std::move(*reinterpret_cast<T*>(mStorage.mBig.mPtr));
 		else
-			static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
+			static_assert([]() { return false; }, "size of the template argument is greater than Any's storage.");
 	}
 
 private:
@@ -272,7 +272,7 @@ private:
 			mRTFuncs = &RTFuncs_value<T>;
 		}
 		else
-			static_assert(!std::is_void_v<std::void_t<T>>, "size of the template argument is greater than Any's storage.");
+			static_assert([]() { return false; }, "size of the template argument is greater than Any's storage.");
 	}
 
 	struct BigStorage
@@ -348,7 +348,7 @@ class ShareableAny
 		template <class Dummy>
 		struct Clone_impl<Dummy, false>
 		{
-			static PlaceHolder* f(const Holder<Type>& h) { throw InvalidType("Assigned class is not copyable."); }
+			static PlaceHolder* f(const Holder<Type>&) { throw InvalidType("Assigned class is not copyable."); }
 		};
 	public:
 		virtual PlaceHolder* Clone() const override

@@ -396,12 +396,12 @@ using GetFrontTypesT = typename GetFrontTypes<Index, Types...>::Type;
 
 
 template <int Nth, int M, class Type, class Head, class ...Body, std::enable_if_t<Nth != M, std::nullptr_t> = nullptr>
-Type GetNthArgument_impl(Head&& head, Body&& ...body)
+Type GetNthArgument_impl(Head&&, Body&& ...body)
 {
 	return GetNthArgument_impl<Nth, M + 1, Body...>(std::forward<Body>(body)...);
 }
 template <int Nth, int M, class Type, class Head, class ...Body, std::enable_if_t<Nth == M, std::nullptr_t> = nullptr>
-Type GetNthArgument_impl(Head&& head, Body&& ...body)
+Type GetNthArgument_impl(Head&& head, Body&& ...)
 {
 	return std::forward<Head>(head);
 }

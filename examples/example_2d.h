@@ -66,8 +66,7 @@ int example_2d(const std::string output_filename = "example_2d.png", const bool 
 					   plot::title = "data", plot::color = "black",
 					   plot::style = Style::points, plot::pointtype = 7, plot::pointsize = 0.5);
 	}
-	//if (!enable_in_memory_data_transfer)
-	if (false)
+	if (!enable_in_memory_data_transfer)
 	{
 		GPMCanvas2D g(output_filename + ".fileplot.png");
 		g.ShowCommands(true);
