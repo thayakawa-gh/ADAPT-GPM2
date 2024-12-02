@@ -1,3 +1,5 @@
+**ADAPT-GPM2 has been archived and merged into [OpenADAPT](https://github.com/thayakawa-gh/OpenADAPT). Please check the new repository for the latest updates.**
+
 # ADAPT-GPM2
 GPM2 is a C++ header-only library to manage Gnuplot. This is designed to draw lines, points, vectors, colormap etc. from std::vector or Matrix data points without Gnuplot's weird command "using", "with ~". Basically it does not require the knowledge of Gnuplot.
 
